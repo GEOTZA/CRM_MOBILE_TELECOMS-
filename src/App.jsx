@@ -380,7 +380,7 @@ const search=async()=>{
   // If not found locally and Supabase is on, search remote
   if(!r&&USE_SUPA){
     try{
-      const res=await fetch(\`\${SUPA_URL}/rest/v1/afm_database?afm=eq.\${q}&select=*\`,{headers:{apikey:SUPA_KEY,Authorization:\`Bearer \${SUPA_KEY}\`}});
+      const res=await fetch(`${SUPA_URL}/rest/v1/afm_database?afm=eq.${q}&select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
       const data=await res.json();
       if(data&&data.length>0) r=data[0];
     }catch(e){console.error("AFM search error:",e);}
