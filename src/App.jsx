@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from "react";
 /* ═══ SUPABASE CONFIG ═══
    Set USE_SUPA=true and fill in your project URL + anon key to connect.
    Run the SQL below in Supabase SQL Editor to create tables. */
-const SUPA_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || "https://YOUR_PROJECT.supabase.co";
-const SUPA_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_KEY) || "YOUR_ANON_KEY";
-const USE_SUPA = !!(typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL && import.meta.env?.VITE_SUPABASE_KEY);
+const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPA_KEY = import.meta.env.VITE_SUPABASE_KEY || "";
+const USE_SUPA = !!(SUPA_URL && SUPA_KEY);
 
 const supa = { from: t => ({
   select: async (c="*") => { if(!USE_SUPA) return {data:null}; const r=await fetch(`${SUPA_URL}/rest/v1/${t}?select=${c}`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}}); return {data:await r.json()}; },
