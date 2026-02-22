@@ -257,7 +257,7 @@ return(
 
 // ═══ REQUEST FORM ═══
 // Form field wrapper — defined outside to prevent focus loss on re-render
-const FF=({l,req,ch})=><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:"0.74rem",fontWeight:600,color:"#555"}}>{l}{req&&<span style={{color:"#E60000"}}> *</span>}</label>{ch}</div>;
+const FL=({l,req,children})=><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:"0.74rem",fontWeight:600,color:"#555"}}>{l}{req&&<span style={{color:"#E60000"}}> *</span>}</label>{children}</div>;
 
 // Detail field — read only
 const DF=({l,v})=><div style={{marginBottom:3}}><div style={{fontSize:"0.66rem",color:"#999",textTransform:"uppercase",fontWeight:600}}>{l}</div><div style={{fontSize:"0.84rem",fontWeight:500}}>{v||"—"}</div></div>;
@@ -290,7 +290,7 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Πελάτης</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
 {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"date"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο",1],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ",1],["tk","ΤΚ",1],["addr","Διεύθυνση",1],["city","Πόλη",1]].map(([f,l,r,t])=>
-<FF key={f} l={l} req={!!r} ch={<input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/>}/>)}
+<FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
 </div></div>
 
 {/* Program */}
@@ -298,31 +298,31 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>📱 Πρόγραμμα</div>
 <div style={{display:"flex",gap:6,marginBottom:10}}>{[["mobile","📱 Κινητή"],["landline","📞 Σταθερή"]].map(([t,l])=><button key={t} onClick={()=>setSvc(t)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:svc===t?pr.color:"#E0E0E0",color:svc===t?"white":"#666",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>{l}</button>)}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-<FF l="Συνεργάτης" req ch={<select value={form.partner} onChange={e=>s("partner",e.target.value)} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select>}/>
-<FF l="Υπηρεσία" req ch={<select value={form.svc} onChange={e=>s("svc",e.target.value)} style={iS}><option value="">—</option>{pr.services.map(x=><option key={x}>{x}</option>)}</select>}/>
-<FF l="Πρόγραμμα" req ch={<select value={form.prog} onChange={e=>s("prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select>}/>
-<FF l="Τύπος" req ch={<select value={form.lt} onChange={e=>s("lt",e.target.value)} style={iS}><option value="">—</option>{pr.lineTypes.map(x=><option key={x}>{x}</option>)}</select>}/>
-<FF l="Νέα/Φορητ." req ch={<select value={form.nlp} onChange={e=>s("nlp",e.target.value)} style={iS}><option value="">—</option><option>Νέα Γραμμή</option><option>Φορητότητα</option></select>}/>
-<FF l="Τιμή" ch={<input value={form.price} onChange={e=>s("price",e.target.value)} placeholder="€" style={iS}/>}/>
+<FL l="Συνεργάτης" req><select value={form.partner} onChange={e=>s("partner",e.target.value)} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></FL>
+<FL l="Υπηρεσία" req><select value={form.svc} onChange={e=>s("svc",e.target.value)} style={iS}><option value="">—</option>{pr.services.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Πρόγραμμα" req><select value={form.prog} onChange={e=>s("prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Τύπος" req><select value={form.lt} onChange={e=>s("lt",e.target.value)} style={iS}><option value="">—</option>{pr.lineTypes.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Νέα/Φορητ." req><select value={form.nlp} onChange={e=>s("nlp",e.target.value)} style={iS}><option value="">—</option><option>Νέα Γραμμή</option><option>Φορητότητα</option></select></FL>
+<FL l="Τιμή"><input value={form.price} onChange={e=>s("price",e.target.value)} placeholder="€" style={iS}/></FL>
 </div></div>
 
 {/* Courier+Status+Sig */}
 <div style={{padding:"14px 20px",background:"#FFF8E1",borderLeft:"4px solid #FFB300",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>🚚 Courier <button onClick={()=>setForm(p=>({...p,cAddr:p.addr,cCity:p.city,cTk:p.tk}))} style={B("#E3F2FD","#1976D2",{fontSize:"0.72rem",padding:"3px 10px",marginLeft:8})}>📋 Αντιγραφή</button></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-<FF l="Courier" ch={<select value={form.cour} onChange={e=>s("cour",e.target.value)} style={iS}><option value="">—</option>{COURIERS.map(x=><option key={x}>{x}</option>)}</select>}/>
-<FF l="Διεύθυνση" ch={<input value={form.cAddr} onChange={e=>s("cAddr",e.target.value)} style={iS}/>}/>
-<FF l="Πόλη" ch={<input value={form.cCity} onChange={e=>s("cCity",e.target.value)} style={iS}/>}/>
-<FF l="ΤΚ" ch={<input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/>}/>
+<FL l="Courier"><select value={form.cour} onChange={e=>s("cour",e.target.value)} style={iS}><option value="">—</option>{COURIERS.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Διεύθυνση"><input value={form.cAddr} onChange={e=>s("cAddr",e.target.value)} style={iS}/></FL>
+<FL l="Πόλη"><input value={form.cCity} onChange={e=>s("cCity",e.target.value)} style={iS}/></FL>
+<FL l="ΤΚ"><input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/></FL>
 </div></div>
 
 <div style={{padding:"14px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-{P.status&&<FF l="Κατάσταση" ch={<select value={form.status} onChange={e=>s("status",e.target.value)} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select>}/>}
-<FF l="Εκκρεμότητα" ch={<select value={form.pendR} onChange={e=>s("pendR",e.target.value)} style={iS}><option value="">—</option>{PEND_R.map(x=><option key={x}>{x}</option>)}</select>}/>
-<FF l="Ακύρωση" ch={<select value={form.canR} onChange={e=>s("canR",e.target.value)} style={iS}><option value="">—</option>{CANCEL_R.map(x=><option key={x}>{x}</option>)}</select>}/>
+{P.status&&<FL l="Κατάσταση"><select value={form.status} onChange={e=>s("status",e.target.value)} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></FL>}
+<FL l="Εκκρεμότητα"><select value={form.pendR} onChange={e=>s("pendR",e.target.value)} style={iS}><option value="">—</option>{PEND_R.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Ακύρωση"><select value={form.canR} onChange={e=>s("canR",e.target.value)} style={iS}><option value="">—</option>{CANCEL_R.map(x=><option key={x}>{x}</option>)}</select></FL>
 </div>
-<div style={{marginTop:8}}><FF l="Σχόλια" ch={<textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/>}/></div>
+<div style={{marginTop:8}}><FL l="Σχόλια"><textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></FL></div>
 </div>
 
 <div style={{padding:"14px 20px",background:"#F3E5F5",borderLeft:"4px solid #9C27B0"}}>
