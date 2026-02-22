@@ -3,9 +3,9 @@ import { useState, useEffect, useRef } from "react";
 /* ═══ SUPABASE CONFIG ═══
    Set USE_SUPA=true and fill in your project URL + anon key to connect.
    Run the SQL below in Supabase SQL Editor to create tables. */
-const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "https://YOUR_PROJECT.supabase.co";
-const SUPA_KEY = import.meta.env.VITE_SUPABASE_KEY || "YOUR_ANON_KEY";
-const USE_SUPA = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_KEY);
+const SUPA_URL = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) || "https://YOUR_PROJECT.supabase.co";
+const SUPA_KEY = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_KEY) || "YOUR_ANON_KEY";
+const USE_SUPA = !!(typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL && import.meta.env?.VITE_SUPABASE_KEY);
 
 const supa = { from: t => ({
   select: async (c="*") => { if(!USE_SUPA) return {data:null}; const r=await fetch(`${SUPA_URL}/rest/v1/${t}?select=${c}`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}}); return {data:await r.json()}; },
@@ -256,13 +256,22 @@ return(
 </div></div>);}
 
 // ═══ REQUEST FORM ═══
+// Form field wrapper — defined outside to prevent focus loss on re-render
+const FF=({l,req,ch})=><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:"0.74rem",fontWeight:600,color:"#555"}}>{l}{req&&<span style={{color:"#E60000"}}> *</span>}</label>{ch}</div>;
+
+// Detail field — read only
+const DF=({l,v})=><div style={{marginBottom:3}}><div style={{fontSize:"0.66rem",color:"#999",textTransform:"uppercase",fontWeight:600}}>{l}</div><div style={{fontSize:"0.84rem",fontWeight:500}}>{v||"—"}</div></div>;
+
+// Admin Panel cards — defined outside to prevent re-render issues
+const AdmBk=({onClick})=><button onClick={onClick} style={{padding:"8px 16px",borderRadius:8,border:"none",background:"#F5F5F5",color:"#333",cursor:"pointer",fontWeight:600,marginBottom:14}}>← Πίσω</button>;
+const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{background:"white",borderRadius:12,padding:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderLeft:"4px solid "+cl,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";}}><div style={{fontSize:"1.5rem",marginBottom:4}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1rem"}}>{ti}</div><p style={{fontSize:"0.76rem",color:"#888",marginTop:2}}>{ds}</p>{ct!==undefined&&<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.4rem",color:cl,marginTop:4}}>{ct}</div>}</div>;
+
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
 const[svc,setSvc]=useState("mobile");const[form,setForm]=useState(ed||{ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",svc:"",prog:"",lt:"",nlp:"",price:"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"active",sig:null});
 const[docs,setDocs]=useState({});const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
 const s=(f,v)=>setForm(p=>({...p,[f]:v}));
 const search=()=>{const r=db.find(x=>x.afm===afmQ.trim());if(r){setFound(r);setForm(p=>({...p,...r}));}else alert("Δεν βρέθηκε");};
 const progs=svc==="mobile"?pr.programs.mobile:pr.programs.landline;
-const F=({l,req,ch})=><div style={{display:"flex",flexDirection:"column",gap:2}}><label style={{fontSize:"0.74rem",fontWeight:600,color:"#555"}}>{l}{req&&<span style={{color:"#E60000"}}> *</span>}</label>{ch}</div>;
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
 <div style={{background:pr.grad,padding:"14px 20px",color:"white",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -281,7 +290,7 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Πελάτης</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
 {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"date"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο",1],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ",1],["tk","ΤΚ",1],["addr","Διεύθυνση",1],["city","Πόλη",1]].map(([f,l,r,t])=>
-<F key={f} l={l} req={!!r} ch={<input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/>}/>)}
+<FF key={f} l={l} req={!!r} ch={<input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/>}/>)}
 </div></div>
 
 {/* Program */}
@@ -289,31 +298,31 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>📱 Πρόγραμμα</div>
 <div style={{display:"flex",gap:6,marginBottom:10}}>{[["mobile","📱 Κινητή"],["landline","📞 Σταθερή"]].map(([t,l])=><button key={t} onClick={()=>setSvc(t)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:svc===t?pr.color:"#E0E0E0",color:svc===t?"white":"#666",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>{l}</button>)}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-<F l="Συνεργάτης" req ch={<select value={form.partner} onChange={e=>s("partner",e.target.value)} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select>}/>
-<F l="Υπηρεσία" req ch={<select value={form.svc} onChange={e=>s("svc",e.target.value)} style={iS}><option value="">—</option>{pr.services.map(x=><option key={x}>{x}</option>)}</select>}/>
-<F l="Πρόγραμμα" req ch={<select value={form.prog} onChange={e=>s("prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select>}/>
-<F l="Τύπος" req ch={<select value={form.lt} onChange={e=>s("lt",e.target.value)} style={iS}><option value="">—</option>{pr.lineTypes.map(x=><option key={x}>{x}</option>)}</select>}/>
-<F l="Νέα/Φορητ." req ch={<select value={form.nlp} onChange={e=>s("nlp",e.target.value)} style={iS}><option value="">—</option><option>Νέα Γραμμή</option><option>Φορητότητα</option></select>}/>
-<F l="Τιμή" ch={<input value={form.price} onChange={e=>s("price",e.target.value)} placeholder="€" style={iS}/>}/>
+<FF l="Συνεργάτης" req ch={<select value={form.partner} onChange={e=>s("partner",e.target.value)} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select>}/>
+<FF l="Υπηρεσία" req ch={<select value={form.svc} onChange={e=>s("svc",e.target.value)} style={iS}><option value="">—</option>{pr.services.map(x=><option key={x}>{x}</option>)}</select>}/>
+<FF l="Πρόγραμμα" req ch={<select value={form.prog} onChange={e=>s("prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select>}/>
+<FF l="Τύπος" req ch={<select value={form.lt} onChange={e=>s("lt",e.target.value)} style={iS}><option value="">—</option>{pr.lineTypes.map(x=><option key={x}>{x}</option>)}</select>}/>
+<FF l="Νέα/Φορητ." req ch={<select value={form.nlp} onChange={e=>s("nlp",e.target.value)} style={iS}><option value="">—</option><option>Νέα Γραμμή</option><option>Φορητότητα</option></select>}/>
+<FF l="Τιμή" ch={<input value={form.price} onChange={e=>s("price",e.target.value)} placeholder="€" style={iS}/>}/>
 </div></div>
 
 {/* Courier+Status+Sig */}
 <div style={{padding:"14px 20px",background:"#FFF8E1",borderLeft:"4px solid #FFB300",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>🚚 Courier <button onClick={()=>setForm(p=>({...p,cAddr:p.addr,cCity:p.city,cTk:p.tk}))} style={B("#E3F2FD","#1976D2",{fontSize:"0.72rem",padding:"3px 10px",marginLeft:8})}>📋 Αντιγραφή</button></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-<F l="Courier" ch={<select value={form.cour} onChange={e=>s("cour",e.target.value)} style={iS}><option value="">—</option>{COURIERS.map(x=><option key={x}>{x}</option>)}</select>}/>
-<F l="Διεύθυνση" ch={<input value={form.cAddr} onChange={e=>s("cAddr",e.target.value)} style={iS}/>}/>
-<F l="Πόλη" ch={<input value={form.cCity} onChange={e=>s("cCity",e.target.value)} style={iS}/>}/>
-<F l="ΤΚ" ch={<input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/>}/>
+<FF l="Courier" ch={<select value={form.cour} onChange={e=>s("cour",e.target.value)} style={iS}><option value="">—</option>{COURIERS.map(x=><option key={x}>{x}</option>)}</select>}/>
+<FF l="Διεύθυνση" ch={<input value={form.cAddr} onChange={e=>s("cAddr",e.target.value)} style={iS}/>}/>
+<FF l="Πόλη" ch={<input value={form.cCity} onChange={e=>s("cCity",e.target.value)} style={iS}/>}/>
+<FF l="ΤΚ" ch={<input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/>}/>
 </div></div>
 
 <div style={{padding:"14px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-{P.status&&<F l="Κατάσταση" ch={<select value={form.status} onChange={e=>s("status",e.target.value)} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select>}/>}
-<F l="Εκκρεμότητα" ch={<select value={form.pendR} onChange={e=>s("pendR",e.target.value)} style={iS}><option value="">—</option>{PEND_R.map(x=><option key={x}>{x}</option>)}</select>}/>
-<F l="Ακύρωση" ch={<select value={form.canR} onChange={e=>s("canR",e.target.value)} style={iS}><option value="">—</option>{CANCEL_R.map(x=><option key={x}>{x}</option>)}</select>}/>
+{P.status&&<FF l="Κατάσταση" ch={<select value={form.status} onChange={e=>s("status",e.target.value)} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select>}/>}
+<FF l="Εκκρεμότητα" ch={<select value={form.pendR} onChange={e=>s("pendR",e.target.value)} style={iS}><option value="">—</option>{PEND_R.map(x=><option key={x}>{x}</option>)}</select>}/>
+<FF l="Ακύρωση" ch={<select value={form.canR} onChange={e=>s("canR",e.target.value)} style={iS}><option value="">—</option>{CANCEL_R.map(x=><option key={x}>{x}</option>)}</select>}/>
 </div>
-<div style={{marginTop:8}}><F l="Σχόλια" ch={<textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/>}/></div>
+<div style={{marginTop:8}}><FF l="Σχόλια" ch={<textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/>}/></div>
 </div>
 
 <div style={{padding:"14px 20px",background:"#F3E5F5",borderLeft:"4px solid #9C27B0"}}>
@@ -328,7 +337,7 @@ return(
 // ═══ DETAIL VIEW ═══
 function Detail({r,pr,prov,P,cu,onBack,onEdit,onComment,onSC}){
 const[ct,setCT]=useState("");const s=ST[r.status]||{};
-const F=({l,v})=><div style={{marginBottom:3}}><div style={{fontSize:"0.66rem",color:"#999",textTransform:"uppercase",fontWeight:600}}>{l}</div><div style={{fontSize:"0.84rem",fontWeight:500}}>{v||"—"}</div></div>;
+
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
 <div style={{background:pr.grad,padding:"14px 20px",color:"white",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -348,17 +357,17 @@ return(
 <div style={{padding:"12px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>👤 Πελάτης</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
-{[["Επώνυμο",r.ln],["Όνομα",r.fn],["ΑΔΤ",r.adt],["Κινητό",r.mob],["ΑΦΜ",r.afm],["Email",r.em],["Διεύθυνση",r.addr],["Πόλη",r.city]].map(([l,v])=><F key={l} l={l} v={v}/>)}</div></div>
+{[["Επώνυμο",r.ln],["Όνομα",r.fn],["ΑΔΤ",r.adt],["Κινητό",r.mob],["ΑΦΜ",r.afm],["Email",r.em],["Διεύθυνση",r.addr],["Πόλη",r.city]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
 
 <div style={{padding:"12px 20px",background:"#E8F5E9",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📱 Πρόγραμμα</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
-{[["Υπηρεσία",r.svc],["Πρόγραμμα",r.prog],["Τύπος",r.lt],["Τιμή","€"+r.price],["Agent",r.agentName],["Partner",r.partner]].map(([l,v])=><F key={l} l={l} v={v}/>)}</div></div>
+{[["Υπηρεσία",r.svc],["Πρόγραμμα",r.prog],["Τύπος",r.lt],["Τιμή","€"+r.price],["Agent",r.agentName],["Partner",r.partner]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
 
 <div style={{padding:"12px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>🚚 Courier</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
-{[["Courier",r.cour],["Διεύθυνση",r.cAddr],["Πόλη",r.cCity],["ΤΚ",r.cTk]].map(([l,v])=><F key={l} l={l} v={v}/>)}</div></div>
+{[["Courier",r.cour],["Διεύθυνση",r.cAddr],["Πόλη",r.cCity],["ΤΚ",r.cTk]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
 
 {/* COMMENTS */}
 <div style={{padding:"14px 20px",background:"#F5F5F5"}}>
@@ -616,25 +625,23 @@ const[ddName,setDdName]=useState("");
 const[showC,setShowC]=useState(false);
 const[nc,setNc]=useState({afm:"",ln:"",fn:"",mob:"",city:""});
 
-const Bk=()=><button onClick={()=>setSec("ov")} style={B("#F5F5F5","#333",{marginBottom:14})}>← Πίσω</button>;
-const Cd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{background:"white",borderRadius:12,padding:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderLeft:`4px solid ${cl}`,transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.transform="translateY(-2px)"} onMouseLeave={e=>e.currentTarget.style.transform="none"}><div style={{fontSize:"1.5rem",marginBottom:4}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1rem"}}>{ti}</div><p style={{fontSize:"0.76rem",color:"#888",marginTop:2}}>{ds}</p>{ct!==undefined&&<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.4rem",color:cl,marginTop:4}}>{ct}</div>}</div>;
 
 // ─── OVERVIEW ───
 if(sec==="ov")return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"2rem",fontWeight:900,marginBottom:4}}>👑 Admin Panel</h1>
 <p style={{color:"#888",fontSize:"0.85rem",marginBottom:20}}>Πλήρης διαχείριση χωρίς κώδικα</p>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(210px,1fr))",gap:10}}>
-<Cd ic="👥" ti="Χρήστες & Partners" ds="Δημιουργία, παύση, διαγραφή, δικαιώματα" ct={users.length} cl="#E91E63" onClick={()=>setSec("us")}/>
-<Cd ic="📋" ti="Πεδία Φόρμας" ds="Προσθήκη, αφαίρεση, validation" ct={flds.length} cl="#2196F3" onClick={()=>setSec("fl")}/>
-<Cd ic="📝" ti="Dropdown Lists" ds="Προγράμματα, couriers, υπηρεσίες" ct={dds.length} cl="#FF9800" onClick={()=>setSec("dd")}/>
-<Cd ic="👤" ti="Πελάτες ΑΦΜ" ds="Βάση δεδομένων, προσθήκη/διαγραφή" ct={afmDb.length} cl="#9C27B0" onClick={()=>setSec("cu")}/>
-<Cd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, διαγραφή, status" ct={reqs.length} cl="#FF5722" onClick={()=>setSec("rq")}/>
-<Cd ic="🔧" ti="Σύστημα" ds="Παύση συστήματος" cl="#607D8B" onClick={()=>setSec("sy")}/>
-<Cd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
+<AdmCd ic="👥" ti="Χρήστες & Partners" ds="Δημιουργία, παύση, διαγραφή, δικαιώματα" ct={users.length} cl="#E91E63" onClick={()=>setSec("us")}/>
+<AdmCd ic="📋" ti="Πεδία Φόρμας" ds="Προσθήκη, αφαίρεση, validation" ct={flds.length} cl="#2196F3" onClick={()=>setSec("fl")}/>
+<AdmCd ic="📝" ti="Dropdown Lists" ds="Προγράμματα, couriers, υπηρεσίες" ct={dds.length} cl="#FF9800" onClick={()=>setSec("dd")}/>
+<AdmCd ic="👤" ti="Πελάτες ΑΦΜ" ds="Βάση δεδομένων, προσθήκη/διαγραφή" ct={afmDb.length} cl="#9C27B0" onClick={()=>setSec("cu")}/>
+<AdmCd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, διαγραφή, status" ct={reqs.length} cl="#FF5722" onClick={()=>setSec("rq")}/>
+<AdmCd ic="🔧" ti="Σύστημα" ds="Παύση συστήματος" cl="#607D8B" onClick={()=>setSec("sy")}/>
+<AdmCd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
 </div></div>);
 
 // ─── USERS ───
-if(sec==="us")return(<div><Bk/>
+if(sec==="us")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>👥 Χρήστες & Partners</h1>
 <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
 {[["Partners",users.filter(u=>u.role==="partner").length,"#4CAF50"],["Agents",users.filter(u=>u.role==="agent").length,"#607D8B"],["Παύση",users.filter(u=>u.paused).length,"#E60000"],["Χωρίς καταχ.",users.filter(u=>!u.cc).length,"#FF9800"]].map(([l,v,c])=>
@@ -658,7 +665,7 @@ if(sec==="us")return(<div><Bk/>
 <td style={{padding:"7px 10px"}}>{u.role!=="admin"&&<button onClick={()=>{if(confirm("Διαγραφή "+u.name+"?"))setUsers(p=>p.filter(x=>x.id!==u.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button>}</td></tr>)}</tbody></table></div></div>);
 
 // ─── FIELDS ───
-if(sec==="fl")return(<div><Bk/>
+if(sec==="fl")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:6}}>📋 Πεδία Φόρμας</h1>
 <p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Προσθήκη/αφαίρεση πεδίων, τύπος, max χαρακτήρες</p>
 <button onClick={()=>setShowF(!showF)} style={B(pr.grad,"white",{marginBottom:12})}>➕ Νέο Πεδίο</button>
@@ -677,7 +684,7 @@ if(sec==="fl")return(<div><Bk/>
 <button onClick={()=>setFlds(p=>p.filter(x=>x.id!==f.id))} style={{padding:"2px 6px",borderRadius:3,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.66rem"}}>🗑</button></div></td></tr>)}</tbody></table></div></div>);
 
 // ─── DROPDOWNS ───
-if(sec==="dd")return(<div><Bk/>
+if(sec==="dd")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:6}}>📝 Dropdown Lists</h1>
 <p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Αλλαγή χωρίς κώδικα!</p>
 {dds.map((d,i)=><div key={i} style={{background:"white",borderRadius:10,padding:14,marginBottom:8,boxShadow:"0 1px 4px rgba(0,0,0,0.05)"}}>
@@ -689,7 +696,7 @@ if(sec==="dd")return(<div><Bk/>
 <div style={{display:"flex",gap:6,marginTop:10}}><input placeholder="Νέα λίστα..." value={ddName} onChange={e=>setDdName(e.target.value)} style={{...iS,flex:1}}/><button onClick={()=>{if(ddName.trim()){setDds(p=>[...p,{n:ddName.trim(),it:[]}]);setDdName("");}}} style={B(pr.color,"white",{})}>➕</button></div></div>);
 
 // ─── CUSTOMERS ───
-if(sec==="cu")return(<div><Bk/>
+if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>👤 Πελάτες — ΑΦΜ</h1>
 <button onClick={()=>setShowC(!showC)} style={B(pr.grad,"white",{marginBottom:12})}>➕ Νέος</button>
 {showC&&<div style={{background:"white",borderRadius:10,padding:14,marginBottom:12}}>
@@ -701,7 +708,7 @@ if(sec==="cu")return(<div><Bk/>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή;"))setAfmDb(p=>p.filter(x=>x.afm!==c.afm));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div>);
 
 // ─── REQUESTS ───
-if(sec==="rq")return(<div><Bk/>
+if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.length})</h1>
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ID","Πελάτης","ΑΦΜ","Πρόγρ.","Status","Agent",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
 {reqs.map(r=><tr key={r.id} style={{borderBottom:"1px solid #F5F5F5"}}>
@@ -714,7 +721,7 @@ if(sec==="rq")return(<div><Bk/>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
 
 // ─── SYSTEM ───
-if(sec==="sy")return(<div><Bk/>
+if(sec==="sy")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🔧 Σύστημα</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
 <h2 style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"1rem",marginBottom:12}}>Παύση Συστήματος</h2>
@@ -728,7 +735,7 @@ if(sec==="sy")return(<div><Bk/>
 <button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} style={B(u.paused?"#4CAF50":"#FF9800","white",{fontSize:"0.75rem",padding:"5px 12px"})}>{u.paused?"▶ Ενεργοποίηση":"⏸ Παύση"}</button></div>)}</div></div></div>);
 
 // ─── SUPABASE ───
-if(sec==="db")return(<div><Bk/>
+if(sec==="db")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🗃️ Supabase</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><span style={{...bg(USE_SUPA?"#E8F5E9":"#FFF3E0",USE_SUPA?"#2E7D32":"#E65100"),fontSize:"0.82rem",padding:"4px 12px"}}>{USE_SUPA?"🟢 Connected":"🟡 Local Mode"}</span></div>
