@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const SUPA_KEY = import.meta.env.VITE_SUPABASE_KEY || "";
 const USE_SUPA = !!(SUPA_URL && SUPA_KEY);
+console.log("🔌 CRM Config:", {USE_SUPA, SUPA_URL: SUPA_URL ? SUPA_URL.substring(0,30)+"..." : "EMPTY", SUPA_KEY: SUPA_KEY ? "SET("+SUPA_KEY.length+"chars)" : "EMPTY"});
 
 const supa = { from: t => ({
   select: async (c="*") => { if(!USE_SUPA) return {data:null}; const r=await fetch(`${SUPA_URL}/rest/v1/${t}?select=${c}`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}}); return {data:await r.json()}; },
