@@ -13,6 +13,19 @@ const supa = { from: t => ({
   update: async v => ({eq: async (c,val) => { if(!USE_SUPA) return {data:v}; await fetch(`${SUPA_URL}/rest/v1/${t}?${c}=eq.${val}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(v)}); return {data:v}; }}),
   delete: () => ({eq: async (c,val) => { if(!USE_SUPA) return {}; await fetch(`${SUPA_URL}/rest/v1/${t}?${c}=eq.${val}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}}); return {}; }}),
 })};
+// SHA-256 hash for password encryption
+const hashPW = async (pw) => {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+};
+
+// Audit log helper
+const auditLog = async (userId, action, entity, entityId, details) => {
+  if(!USE_SUPA) return;
+  try { await supa.from('audit_log').insert({user_id:userId,action,entity,entity_id:entityId,details:JSON.stringify(details)}); } catch(e) { console.warn('Audit log error:',e); }
+};
+
+
 
 /*
 SUPABASE SQL SCHEMA — Run in SQL Editor:
@@ -121,7 +134,7 @@ const expCSV=data=>{const h=["ID","Πάροχος","Επώνυμο","Όνομα"
 
 // ═══ MAIN APP ═══
 export default function App(){
-const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[users,setUsers]=useState(USERS_INIT);
+const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[users,setUsers]=useState(USERS_INIT);
 const[reqs,setReqs]=useState(genReqs);const[tix,setTix]=useState(genTickets);const[notifs,setNotifs]=useState([]);
 const[afmDb,setAfmDb]=useState(AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
 const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]=useState("list");
@@ -136,11 +149,100 @@ const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);if(P.view
 const vr=visReqs();const fr=vr.filter(r=>sf==="all"||r.status===sf);
 const stats={};Object.keys(ST).forEach(k=>{stats[k]=vr.filter(r=>r.status===k).length});stats.total=vr.length;
 
-const doLogin=()=>{const u=users.find(x=>x.un===lf.un&&x.pw===lf.pw);if(!u){alert("Λάθος στοιχεία!");return;}if(!u.active||u.paused){alert("Λογαριασμός ανενεργός/παύση");return;}if(sysPaused&&u.role!=="admin"){alert("Σύστημα σε παύση");return;}setCU(u);setLI(true);};
+const doLogin=async()=>{
+  const {un,pw}=lf;
+  if(!un||!pw){alert("Συμπληρώστε username & password");return;}
+  
+  if(USE_SUPA){
+    // Online mode: check Supabase
+    try{
+      const hash=await hashPW(pw);
+      const res=await fetch(`${SUPA_URL}/rest/v1/users?username=eq.${un}&select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+      const data=await res.json();
+      if(data&&data.length>0){
+        const u=data[0];
+        // Check hashed password OR plain text (for migration)
+        if(u.password===hash||u.password===pw){
+          if(!u.active){alert("Ο λογαριασμός είναι απενεργοποιημένος");return;}
+          if(u.paused){alert("Ο λογαριασμός είναι σε παύση");return;}
+          const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0};
+          setCU(cu);
+          setGDPR(u.gdpr_consent||false);
+          auditLog(u.id,'login','users',u.id,{username:u.username});
+          // Load all data from Supabase
+          loadFromSupa();
+          return;
+        }
+      }
+      alert("Λάθος στοιχεία");
+    }catch(e){
+      console.error("Login error:",e);
+      alert("Σφάλμα σύνδεσης. Δοκιμάζω τοπικά...");
+      loginLocal(un,pw);
+    }
+  }else{
+    loginLocal(un,pw);
+  }
+};
+
+const loginLocal=(un,pw)=>{
+  const u=users.find(x=>x.un===un&&x.pw===pw);
+  if(!u){alert("Λάθος στοιχεία");return;}
+  if(sysPaused&&u.role!=="admin"){alert("🔴 Το σύστημα είναι σε παύση");return;}
+  if(u.paused){alert("⏸ Ο λογαριασμός σας είναι σε παύση");return;}
+  setCU(u);
+};
+
+const loadFromSupa=async()=>{
+  if(!USE_SUPA) return;
+  try{
+    // Load users
+    const uRes=await fetch(`${SUPA_URL}/rest/v1/users?select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+    const uData=await uRes.json();
+    if(uData&&Array.isArray(uData)){
+      setUsers(uData.map(u=>({id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:u.active?1:0,paused:u.paused?1:0,cc:u.can_create?1:0})));
+    }
+    // Load AFM database
+    const aRes=await fetch(`${SUPA_URL}/rest/v1/afm_database?select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+    const aData=await aRes.json();
+    if(aData&&Array.isArray(aData)) setAfmDb(aData);
+    // Load requests
+    const rRes=await fetch(`${SUPA_URL}/rest/v1/requests?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+    const rData=await rRes.json();
+    if(rData&&Array.isArray(rData)){
+      setReqs(rData.map(r=>({...r,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,comments:[]})));
+    }
+    // Load tickets  
+    const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+    const tData=await tRes.json();
+    if(tData&&Array.isArray(tData)){
+      setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,msgs:[]})));
+    }
+    console.log("✅ Data loaded from Supabase");
+  }catch(e){console.error("Load error:",e);}
+}
 
 const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice")addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);if(req&&cu.role==="agent")users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`));};
 
-const saveReq=form=>{if(vm==="edit"&&sel){setReqs(p=>p.map(r=>r.id===sel.id?{...r,...form}:r));}else{setReqs(p=>[{...form,id:`REQ-${String(p.length+1000).padStart(5,"0")}`,prov,created:td(),agentId:cu.id,agentName:cu.name,partner:cu.partner||"",comments:[]},...p]);}setVM("list");};
+const saveReq=async(f)=>{
+  const id=f.id||`REQ-${String(reqs.length+1).padStart(5,"0")}`;
+  const nr={...f,id,prov,agentId:cu.id,agentName:cu.name,partner:cu.partner||f.partner,created:f.created||ts(),comments:f.comments||[]};
+  setReqs(p=>f.id?p.map(r=>r.id===f.id?nr:r):[nr,...p]);
+  setVM("list");setSel(null);
+  // Save to Supabase
+  if(USE_SUPA){
+    try{
+      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"active",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created};
+      if(f.id){
+        await supa.from("requests").update(dbRow).eq("id",f.id);
+        auditLog(cu.id,"update","requests",f.id,{fields:"updated"});
+      }else{
+        await supa.from("requests").insert(dbRow);
+        auditLog(cu.id,"create","requests",nr.id,{provider:prov,afm:nr.afm});
+      }
+    }catch(e){console.error("Save error:",e);}
+  }
+}
 
 // LOGIN SCREEN
 if(!loggedIn)return(
@@ -175,7 +277,8 @@ return(
 {myN.length>0&&<span style={{position:"absolute",top:-5,right:-7,background:"#FFD700",color:"#1A1A2E",fontSize:"0.58rem",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>{myN.length}</span>}
 </div>
 <span style={{color:"rgba(255,255,255,0.9)",fontSize:"0.8rem"}}>{cu.name}</span>
-<button onClick={()=>{setLI(false);setCU(null);setLF({un:"",pw:""});}} style={{background:"rgba(255,255,255,0.2)",color:"white",border:"1px solid rgba(255,255,255,0.3)",padding:"4px 12px",borderRadius:6,cursor:"pointer",fontSize:"0.75rem",fontWeight:600}}>Logout</button>
+<button onClick={()=>{auditLog(cu?.id,"logout","users",cu?.id,{});setLI(false);setCU(null);setLF({un:"",pw:""});}} style={{background:"rgba(255,255,255,0.2)",color:"white",border:"1px solid rgba(255,255,255,0.3)",padding:"4px 12px",borderRadius:6,cursor:"pointer",fontSize:"0.75rem",fontWeight:600}}>Logout</button>
+<span style={{fontSize:"0.65rem",padding:"2px 8px",borderRadius:4,background:USE_SUPA?"rgba(76,175,80,0.3)":"rgba(255,152,0,0.3)",color:"white",fontWeight:600}}>{USE_SUPA?"🟢 Online":"🟡 Local"}</span>
 </div></div></div>
 
 {/* PROVIDERS */}
@@ -270,7 +373,26 @@ function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
 const[svc,setSvc]=useState("mobile");const[form,setForm]=useState(ed||{ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",svc:"",prog:"",lt:"",nlp:"",price:"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"active",sig:null});
 const[docs,setDocs]=useState({});const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
 const s=(f,v)=>setForm(p=>({...p,[f]:v}));
-const search=()=>{const r=db.find(x=>x.afm===afmQ.trim());if(r){setFound(r);setForm(p=>({...p,...r}));}else alert("Δεν βρέθηκε");};
+const search=async()=>{
+  const q=afmQ.trim();if(!q)return;
+  // First check local
+  let r=db.find(x=>x.afm===q);
+  // If not found locally and Supabase is on, search remote
+  if(!r&&USE_SUPA){
+    try{
+      const res=await fetch(\`\${SUPA_URL}/rest/v1/afm_database?afm=eq.\${q}&select=*\`,{headers:{apikey:SUPA_KEY,Authorization:\`Bearer \${SUPA_KEY}\`}});
+      const data=await res.json();
+      if(data&&data.length>0) r=data[0];
+    }catch(e){console.error("AFM search error:",e);}
+  }
+  if(r){
+    setFound(r);
+    // Auto-fill ALL fields from AFM result
+    setForm(p=>({...p,ln:r.ln||p.ln,fn:r.fn||p.fn,fat:r.fat||p.fat,bd:r.bd||p.bd,adt:r.adt||p.adt,ph:r.ph||p.ph,mob:r.mob||p.mob,em:r.em||p.em,afm:r.afm||p.afm,doy:r.doy||p.doy,tk:r.tk||p.tk,addr:r.addr||p.addr,city:r.city||p.city}));
+  }else{
+    alert("Δεν βρέθηκε στη βάση");
+  }
+};
 const progs=svc==="mobile"?pr.programs.mobile:pr.programs.landline;
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
