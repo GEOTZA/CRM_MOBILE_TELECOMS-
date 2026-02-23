@@ -247,6 +247,14 @@ const saveReq=async(f)=>{
         await supa.from("requests").insert(dbRow);
         auditLog(cu.id,"create","requests",nr.id,{provider:prov,afm:nr.afm});
       }
+      // Auto-save customer to AFM database (upsert)
+      if(nr.afm){
+        const afmRow={afm:nr.afm,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city};
+        await fetch(`${SUPA_URL}/rest/v1/afm_database`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=representation"},body:JSON.stringify(afmRow)});
+        // Update local AFM db too
+        setAfmDb(prev=>{const ex=prev.findIndex(x=>x.afm===nr.afm);if(ex>-1){const n=[...prev];n[ex]=afmRow;return n;}return[...prev,afmRow];});
+        console.log("📋 Customer saved to AFM database:",nr.afm);
+      }
     }catch(e){console.error("Save error:",e);}
   }
 }
