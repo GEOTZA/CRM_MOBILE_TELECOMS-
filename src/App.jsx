@@ -135,9 +135,9 @@ const expCSV=data=>{const h=["ID","Πάροχος","Επώνυμο","Όνομα"
 
 // ═══ MAIN APP ═══
 export default function App(){
-const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USERS_INIT);
-const[reqs,setReqs]=useState(genReqs);const[tix,setTix]=useState(genTickets);const[notifs,setNotifs]=useState([]);
-const[afmDb,setAfmDb]=useState(AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
+const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
+const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);
+const[afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
 const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]=useState("list");
 const[selTix,setSelTix]=useState(null);const[sysPaused,setSysPaused]=useState(false);
 const[lf,setLF]=useState({un:"",pw:""});
@@ -360,7 +360,7 @@ return(
 {tab==="dash"&&(vm==="form"||vm==="edit")&&<ReqForm pr={pr} prov={prov} onSave={saveReq} onCancel={()=>setVM("list")} ed={vm==="edit"?sel:null} db={afmDb} P={P} cu={cu}/>}
 
 {/* DETAIL */}
-{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>setVM("list")} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={s=>{setReqs(p=>p.map(r=>r.id===sel.id?{...r,status:s}:r));setSel(p=>({...p,status:s}));setSF("all");}}/>}
+{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>setVM("list")} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{setReqs(p=>p.map(r=>r.id===sel.id?{...r,status:s}:r));setSel(p=>({...p,status:s}));if(USE_SUPA){try{await supa.from("requests").update({status:s}).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s});}catch(e){console.error("Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
 {tab==="tix"&&!selTix&&<TixList tix={tix} cu={cu} P={P} pr={pr} onSel={setSelTix} onCreate={t=>{const nt={...t,id:`TK-${String(tix.length+1).padStart(5,"0")}`,by:cu.id,byName:cu.name,byRole:cu.role,at:ts(),status:"open",msgs:[{uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:ts()}]};setTix(p=>[nt,...p]);users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason}`));}}/>}
