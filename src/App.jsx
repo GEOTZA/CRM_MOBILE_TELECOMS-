@@ -135,7 +135,7 @@ const expCSV=data=>{const h=["ID","Πάροχος","Επώνυμο","Όνομα"
 
 // ═══ MAIN APP ═══
 export default function App(){
-const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[users,setUsers]=useState(USERS_INIT);
+const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USERS_INIT);
 const[reqs,setReqs]=useState(genReqs);const[tix,setTix]=useState(genTickets);const[notifs,setNotifs]=useState([]);
 const[afmDb,setAfmDb]=useState(AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
 const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]=useState("list");
@@ -151,6 +151,7 @@ const vr=visReqs();const fr=vr.filter(r=>sf==="all"||r.status===sf);
 const stats={};Object.keys(ST).forEach(k=>{stats[k]=vr.filter(r=>r.status===k).length});stats.total=vr.length;
 
 const doLogin=async()=>{
+  console.log("🔑 Login attempt...");
   const {un,pw}=lf;
   if(!un||!pw){alert("Συμπληρώστε username & password");return;}
   
@@ -163,6 +164,7 @@ const doLogin=async()=>{
       if(data&&data.length>0){
         const u=data[0];
         // Check hashed password OR plain text (for migration)
+        console.log("🔐 Hash check:", {dbPW: u.password?.substring(0,20)+"...", inputHash: hash?.substring(0,20)+"...", match: u.password===hash});
         if(u.password===hash||u.password===pw){
           if(!u.active){alert("Ο λογαριασμός είναι απενεργοποιημένος");return;}
           if(u.paused){alert("Ο λογαριασμός είναι σε παύση");return;}
@@ -175,6 +177,7 @@ const doLogin=async()=>{
           return;
         }
       }
+      console.log("❌ No match. DB users found:", data?.length);
       alert("Λάθος στοιχεία");
     }catch(e){
       console.error("Login error:",e);
@@ -195,7 +198,8 @@ const loginLocal=(un,pw)=>{
 };
 
 const loadFromSupa=async()=>{
-  if(!USE_SUPA) return;
+  if(!USE_SUPA||supaLoaded) return;
+  setSupaLoaded(true);
   try{
     // Load users
     const uRes=await fetch(`${SUPA_URL}/rest/v1/users?select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
