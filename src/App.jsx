@@ -234,7 +234,7 @@ const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.nam
 const saveReq=async(f)=>{
   const id=f.id||`REQ-${String(reqs.length+1).padStart(5,"0")}`;
   const lns=f.lines||[];
-  const nr={...f,id,prov,agentId:cu.id,agentName:cu.name,partner:cu.partner||f.partner,created:f.created||ts(),comments:f.comments||[],
+  const nr={...f,id,prov,agentId:f.agentId||cu.id,agentName:f.agentName||cu.name,partner:cu.partner||f.partner,created:f.created||ts(),comments:f.comments||[],
     prog:lns.length>0?lns.map(l=>l.prog).filter(Boolean).join(", "):(f.prog||""),
     svc:lns.length>0?lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "):(f.svc||""),
     price:lns.length>0?String(lns.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)):(f.price||"")
