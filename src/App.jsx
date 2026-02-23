@@ -217,7 +217,7 @@ const loadFromSupa=async()=>{
     const rRes=await fetch(`${SUPA_URL}/rest/v1/requests?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const rData=await rRes.json();
     if(rData&&Array.isArray(rData)){
-      setReqs(rData.map(r=>({...r,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,lines:r.lines?JSON.parse(r.lines):[],comments:[]})));
+      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,lines:r.lines?JSON.parse(r.lines):[],comments:[]})));
     }
     // Load tickets  
     const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -233,7 +233,12 @@ const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.nam
 
 const saveReq=async(f)=>{
   const id=f.id||`REQ-${String(reqs.length+1).padStart(5,"0")}`;
-  const nr={...f,id,prov,agentId:cu.id,agentName:cu.name,partner:cu.partner||f.partner,created:f.created||ts(),comments:f.comments||[]};
+  const lns=f.lines||[];
+  const nr={...f,id,prov,agentId:cu.id,agentName:cu.name,partner:cu.partner||f.partner,created:f.created||ts(),comments:f.comments||[],
+    prog:lns.length>0?lns.map(l=>l.prog).filter(Boolean).join(", "):(f.prog||""),
+    svc:lns.length>0?lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "):(f.svc||""),
+    price:lns.length>0?String(lns.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)):(f.price||"")
+  };
   setReqs(p=>f.id?p.map(r=>r.id===f.id?nr:r):[nr,...p]);
   setVM("list");setSel(null);
   // Save to Supabase
@@ -561,10 +566,13 @@ return(
 <button onClick={()=>expA5(r,prov)} style={B("rgba(255,255,255,0.2)","white",{})}>A5</button>
 <button onClick={onBack} style={B("rgba(255,255,255,0.2)","white",{})}>← Πίσω</button></div></div>
 
-{P.status&&<div style={{padding:"10px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0",display:"flex",alignItems:"center",gap:8}}>
+{P.status?<div style={{padding:"10px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0",display:"flex",alignItems:"center",gap:8}}>
 <span style={{fontWeight:700,fontSize:"0.82rem"}}>Κατάσταση:</span>
 <select value={r.status} onChange={e=>onSC(e.target.value)} style={{...iS,width:220,background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c,fontWeight:700}}>
-{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>}
+{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
+:<div style={{padding:"10px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0",display:"flex",alignItems:"center",gap:8}}>
+<span style={{fontWeight:700,fontSize:"0.82rem"}}>Κατάσταση:</span>
+<span style={{...bg(s.bg,s.c),fontSize:"0.85rem",padding:"5px 14px"}}>{s.i} {s.l}</span></div>}
 
 <div style={{padding:"12px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>👤 Πελάτης</div>
