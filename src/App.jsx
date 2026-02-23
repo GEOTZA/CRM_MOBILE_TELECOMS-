@@ -234,12 +234,13 @@ const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.nam
 const saveReq=async(f)=>{
   const id=f.id||`REQ-${String(reqs.length+1).padStart(5,"0")}`;
   const lns=f.lines||[];
-  const nr={...f,id,prov,agentId:f.agentId||cu.id,agentName:f.agentName||cu.name,partner:cu.partner||f.partner,created:f.created||ts(),comments:f.comments||[],
+  const nr={...f,id,prov:f.prov||prov,agentId:f.agentId||cu.id,agentName:f.agentName||cu.name,partner:f.partner||cu.partner||"",created:f.created||ts(),comments:f.comments||[],
     prog:lns.length>0?lns.map(l=>l.prog).filter(Boolean).join(", "):(f.prog||""),
     svc:lns.length>0?lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "):(f.svc||""),
     price:lns.length>0?String(lns.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)):(f.price||"")
   };
-  setReqs(p=>f.id?p.map(r=>r.id===f.id?nr:r):[nr,...p]);
+  console.log("💾 saveReq:",{isEdit:!!f.id,id:nr.id,prov:nr.prov,agentId:nr.agentId,status:nr.status,linesCount:lns.length});
+  setReqs(p=>{const n=f.id?p.map(r=>r.id===f.id?nr:r):[nr,...p];console.log("📋 Reqs after save:",n.length);return n;});
   setVM("list");setSel(null);setSF("all");
   // Save to Supabase
   if(USE_SUPA){
