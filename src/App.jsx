@@ -170,6 +170,7 @@ const doLogin=async()=>{
           if(u.paused){alert("Ο λογαριασμός είναι σε παύση");return;}
           const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0};
           setCU(cu);
+          setLI(true);
           setGDPR(u.gdpr_consent||false);
           auditLog(u.id,'login','users',u.id,{username:u.username});
           // Load all data from Supabase
@@ -194,7 +195,7 @@ const loginLocal=(un,pw)=>{
   if(!u){alert("Λάθος στοιχεία");return;}
   if(sysPaused&&u.role!=="admin"){alert("🔴 Το σύστημα είναι σε παύση");return;}
   if(u.paused){alert("⏸ Ο λογαριασμός σας είναι σε παύση");return;}
-  setCU(u);
+  setCU(u);setLI(true);
 };
 
 const loadFromSupa=async()=>{
