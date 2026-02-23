@@ -217,7 +217,7 @@ const loadFromSupa=async()=>{
     const rRes=await fetch(`${SUPA_URL}/rest/v1/requests?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const rData=await rRes.json();
     if(rData&&Array.isArray(rData)){
-      setReqs(rData.map(r=>({...r,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,comments:[]})));
+      setReqs(rData.map(r=>({...r,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,lines:r.lines?JSON.parse(r.lines):[],comments:[]})));
     }
     // Load tickets  
     const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -239,7 +239,9 @@ const saveReq=async(f)=>{
   // Save to Supabase
   if(USE_SUPA){
     try{
-      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"active",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created};
+      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"active",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,lines:JSON.stringify(nr.lines||[])};
+      // Also set summary fields from first line for backwards compatibility
+      if(nr.lines&&nr.lines.length>0){dbRow.prog=nr.lines[0].prog;dbRow.price=String(nr.lines.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2));dbRow.nlp=nr.lines[0].nlp==="port"?"Φορητότητα":"Νέα Γραμμή";}
       if(f.id){
         await supa.from("requests").update(dbRow).eq("id",f.id);
         auditLog(cu.id,"update","requests",f.id,{fields:"updated"});
@@ -385,14 +387,13 @@ const AdmBk=({onClick})=><button onClick={onClick} style={{padding:"8px 16px",bo
 const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{background:"white",borderRadius:12,padding:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderLeft:"4px solid "+cl,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";}}><div style={{fontSize:"1.5rem",marginBottom:4}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1rem"}}>{ti}</div><p style={{fontSize:"0.76rem",color:"#888",marginTop:2}}>{ds}</p>{ct!==undefined&&<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.4rem",color:cl,marginTop:4}}>{ct}</div>}</div>;
 
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
-const[svc,setSvc]=useState("mobile");const[form,setForm]=useState(ed||{ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",svc:"",prog:"",lt:"",nlp:"",price:"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"active",sig:null});
-const[docs,setDocs]=useState({});const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
+const emptyLine=()=>({id:Date.now()+Math.random(),type:"mobile",prog:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:""});
+const[form,setForm]=useState(ed||{ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"active",sig:null,lines:[emptyLine()]});
+const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
 const s=(f,v)=>setForm(p=>({...p,[f]:v}));
 const search=async()=>{
   const q=afmQ.trim();if(!q)return;
-  // First check local
   let r=db.find(x=>x.afm===q);
-  // If not found locally and Supabase is on, search remote
   if(!r&&USE_SUPA){
     try{
       const res=await fetch(`${SUPA_URL}/rest/v1/afm_database?afm=eq.${q}&select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -402,13 +403,28 @@ const search=async()=>{
   }
   if(r){
     setFound(r);
-    // Auto-fill ALL fields from AFM result
     setForm(p=>({...p,ln:r.ln||p.ln,fn:r.fn||p.fn,fat:r.fat||p.fat,bd:r.bd||p.bd,adt:r.adt||p.adt,ph:r.ph||p.ph,mob:r.mob||p.mob,em:r.em||p.em,afm:r.afm||p.afm,doy:r.doy||p.doy,tk:r.tk||p.tk,addr:r.addr||p.addr,city:r.city||p.city}));
-  }else{
-    alert("Δεν βρέθηκε στη βάση");
-  }
+  }else{alert("Δεν βρέθηκε στη βάση");}
 };
-const progs=svc==="mobile"?pr.programs.mobile:pr.programs.landline;
+
+// Lines management
+const lines=form.lines||[emptyLine()];
+const setLines=nl=>setForm(p=>({...p,lines:nl}));
+const addLine=()=>setLines([...lines,emptyLine()]);
+const rmLine=i=>{if(lines.length>1)setLines(lines.filter((_,j)=>j!==i));};
+const updLine=(i,k,v)=>setLines(lines.map((ln,j)=>j===i?{...ln,[k]:v}:ln));
+
+// Totals
+const mobTotal=lines.filter(l=>l.type==="mobile").reduce((s,l)=>s+(parseFloat(l.price)||0),0);
+const landTotal=lines.filter(l=>l.type==="landline").reduce((s,l)=>s+(parseFloat(l.price)||0),0);
+const grandTotal=mobTotal+landTotal;
+const subTotal=lines.filter(l=>l.mode==="subsidy").reduce((s,l)=>s+(parseFloat(l.subsidy)||0),0);
+const subCount=lines.filter(l=>l.mode==="subsidy").length;
+const mobCount=lines.filter(l=>l.type==="mobile").length;
+const landCount=lines.filter(l=>l.type==="landline").length;
+
+const provOpts=["Vodafone","Cosmote","Nova"].filter(x=>x.toLowerCase()!==prov);
+
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
 <div style={{background:pr.grad,padding:"14px 20px",color:"white",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -430,20 +446,77 @@ return(
 <FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
 </div></div>
 
-{/* Program */}
-<div style={{padding:"14px 20px",background:"#E8F5E9",borderLeft:"4px solid #4CAF50",borderBottom:"1px solid #F0F0F0"}}>
-<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>📱 Πρόγραμμα</div>
-<div style={{display:"flex",gap:6,marginBottom:10}}>{[["mobile","📱 Κινητή"],["landline","📞 Σταθερή"]].map(([t,l])=><button key={t} onClick={()=>setSvc(t)} style={{padding:"6px 16px",borderRadius:6,border:"none",background:svc===t?pr.color:"#E0E0E0",color:svc===t?"white":"#666",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>{l}</button>)}</div>
+{/* Partner */}
+<div style={{padding:"14px 20px",background:"#F3E5F5",borderLeft:"4px solid #9C27B0",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
 <FL l="Συνεργάτης" req><select value={form.partner} onChange={e=>s("partner",e.target.value)} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></FL>
-<FL l="Υπηρεσία" req><select value={form.svc} onChange={e=>s("svc",e.target.value)} style={iS}><option value="">—</option>{pr.services.map(x=><option key={x}>{x}</option>)}</select></FL>
-<FL l="Πρόγραμμα" req><select value={form.prog} onChange={e=>s("prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select></FL>
-<FL l="Τύπος" req><select value={form.lt} onChange={e=>s("lt",e.target.value)} style={iS}><option value="">—</option>{pr.lineTypes.map(x=><option key={x}>{x}</option>)}</select></FL>
-<FL l="Νέα/Φορητ." req><select value={form.nlp} onChange={e=>s("nlp",e.target.value)} style={iS}><option value="">—</option><option>Νέα Γραμμή</option><option>Φορητότητα</option></select></FL>
-<FL l="Τιμή"><input value={form.price} onChange={e=>s("price",e.target.value)} placeholder="€" style={iS}/></FL>
 </div></div>
 
-{/* Courier+Status+Sig */}
+{/* ═══ ΓΡΑΜΜΕΣ ΠΡΟΪΟΝΤΩΝ ═══ */}
+<div style={{padding:"14px 20px",background:"#E8F5E9",borderLeft:"4px solid #4CAF50",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>📦 Γραμμές Προϊόντων <span style={{fontSize:"0.72rem",color:"#888",fontWeight:400}}>({mobCount} κινητ. + {landCount} σταθ.)</span></div>
+<button onClick={addLine} style={B("#4CAF50","white",{padding:"6px 14px",fontSize:"0.78rem"})}>➕ Προσθήκη Γραμμής</button>
+</div>
+
+{lines.map((ln,i)=>{
+const isMob=ln.type==="mobile";
+const isPort=ln.nlp==="port";
+const isSub=ln.mode==="subsidy";
+const progs=isMob?pr.programs.mobile:pr.programs.landline;
+return(
+<div key={ln.id} style={{background:"white",border:"1px solid #E0E0E0",borderRadius:10,padding:12,marginBottom:10,borderLeft:`4px solid ${isMob?"#2196F3":"#FF9800"}`}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<span style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.82rem",color:isMob?"#1565C0":"#E65100"}}>{isMob?"📱":"📞"} Γραμμή {i+1} — {isMob?"Κινητή":"Σταθερή"}</span>
+<button onClick={()=>rmLine(i)} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>🗑️</button>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+
+<FL l="Τύπος" req><select value={ln.type} onChange={e=>updLine(i,"type",e.target.value)} style={iS}><option value="mobile">📱 Κινητή</option><option value="landline">📞 Σταθερή</option></select></FL>
+
+<FL l="Πρόγραμμα" req><select value={ln.prog} onChange={e=>updLine(i,"prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Τιμή (€)" req><input type="number" value={ln.price} onChange={e=>updLine(i,"price",e.target.value)} placeholder="0.00" style={iS}/></FL>
+
+<FL l="Τρόπος" req><select value={ln.mode} onChange={e=>updLine(i,"mode",e.target.value)} style={iS}><option value="simo">SIM Only</option><option value="subsidy">Επιδότηση</option></select></FL>
+
+{isSub&&<FL l="Ποσό Επιδότησης (€)"><input type="number" maxLength={4} value={ln.subsidy} onChange={e=>{if(e.target.value.length<=4)updLine(i,"subsidy",e.target.value)}} placeholder="0000" style={iS}/></FL>}
+
+<FL l="Νέα/Φορητ." req><select value={ln.nlp} onChange={e=>updLine(i,"nlp",e.target.value)} style={iS}><option value="new">Νέα Γραμμή</option><option value="port">Φορητότητα</option></select></FL>
+
+{isPort&&<FL l="Από Πάροχο"><select value={ln.fromProv} onChange={e=>updLine(i,"fromProv",e.target.value)} style={iS}><option value="">—</option>{provOpts.map(x=><option key={x}>{x}</option>)}</select></FL>}
+
+{isMob&&<FL l="Αριθμός Κινητού"><input type="tel" maxLength={10} value={ln.mobNum} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,10);updLine(i,"mobNum",v)}} placeholder="69xxxxxxxx" style={iS}/></FL>}
+
+{!isMob&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
+
+</div></div>);})}
+
+{/* TOTALS */}
+<div style={{background:"#F5F5F5",borderRadius:10,padding:14,marginTop:8}}>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:10}}>
+<div style={{textAlign:"center",padding:10,background:"#E3F2FD",borderRadius:8}}>
+<div style={{fontSize:"0.7rem",color:"#1565C0",fontWeight:600}}>📱 Κινητή ({mobCount})</div>
+<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",color:"#1565C0"}}>€{mobTotal.toFixed(2)}</div>
+</div>
+<div style={{textAlign:"center",padding:10,background:"#FFF3E0",borderRadius:8}}>
+<div style={{fontSize:"0.7rem",color:"#E65100",fontWeight:600}}>📞 Σταθερή ({landCount})</div>
+<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",color:"#E65100"}}>€{landTotal.toFixed(2)}</div>
+</div>
+{subCount>0&&<div style={{textAlign:"center",padding:10,background:"#FCE4EC",borderRadius:8}}>
+<div style={{fontSize:"0.7rem",color:"#AD1457",fontWeight:600}}>🎁 Επιδότηση ({subCount})</div>
+<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",color:"#AD1457"}}>€{subTotal.toFixed(2)}</div>
+</div>}
+<div style={{textAlign:"center",padding:10,background:"#E8F5E9",borderRadius:8}}>
+<div style={{fontSize:"0.7rem",color:"#2E7D32",fontWeight:600}}>💰 ΣΥΝΟΛΟ</div>
+<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.5rem",color:"#2E7D32"}}>€{grandTotal.toFixed(2)}</div>
+</div>
+</div>
+<div style={{textAlign:"center",marginTop:8,fontSize:"0.7rem",color:"#888",fontStyle:"italic"}}>* Όλα τα ποσά είναι τελικά και περιλαμβάνουν φόρους (ΦΠΑ)</div>
+</div>
+</div>
+
+{/* Courier */}
 <div style={{padding:"14px 20px",background:"#FFF8E1",borderLeft:"4px solid #FFB300",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>🚚 Courier <button onClick={()=>setForm(p=>({...p,cAddr:p.addr,cCity:p.city,cTk:p.tk}))} style={B("#E3F2FD","#1976D2",{fontSize:"0.72rem",padding:"3px 10px",marginLeft:8})}>📋 Αντιγραφή</button></div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
@@ -453,6 +526,7 @@ return(
 <FL l="ΤΚ"><input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/></FL>
 </div></div>
 
+{/* Status */}
 <div style={{padding:"14px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
 {P.status&&<FL l="Κατάσταση"><select value={form.status} onChange={e=>s("status",e.target.value)} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></FL>}
@@ -462,6 +536,7 @@ return(
 <div style={{marginTop:8}}><FL l="Σχόλια"><textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></FL></div>
 </div>
 
+{/* Signature */}
 <div style={{padding:"14px 20px",background:"#F3E5F5",borderLeft:"4px solid #9C27B0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>✍️ Υπογραφή</div>
 <SigPad onSave={d=>s("sig",d)} ex={form.sig}/></div>
@@ -497,9 +572,27 @@ return(
 {[["Επώνυμο",r.ln],["Όνομα",r.fn],["ΑΔΤ",r.adt],["Κινητό",r.mob],["ΑΦΜ",r.afm],["Email",r.em],["Διεύθυνση",r.addr],["Πόλη",r.city]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
 
 <div style={{padding:"12px 20px",background:"#E8F5E9",borderBottom:"1px solid #F0F0F0"}}>
-<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📱 Πρόγραμμα</div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
-{[["Υπηρεσία",r.svc],["Πρόγραμμα",r.prog],["Τύπος",r.lt],["Τιμή","€"+r.price],["Agent",r.agentName],["Partner",r.partner]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📦 Γραμμές Προϊόντων</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6,marginBottom:8}}>
+<DF l="Agent" v={r.agentName}/><DF l="Partner" v={r.partner}/></div>
+{(r.lines&&r.lines.length>0)?r.lines.map((ln,i)=>(
+<div key={i} style={{background:"white",border:"1px solid #E0E0E0",borderRadius:8,padding:10,marginBottom:6,borderLeft:`3px solid ${ln.type==="mobile"?"#2196F3":"#FF9800"}`}}>
+<div style={{fontWeight:700,fontSize:"0.78rem",color:ln.type==="mobile"?"#1565C0":"#E65100",marginBottom:4}}>{ln.type==="mobile"?"📱 Κινητή":"📞 Σταθερή"} #{i+1}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:4}}>
+<DF l="Πρόγραμμα" v={ln.prog}/><DF l="Τιμή" v={ln.price?"€"+ln.price:"—"}/>
+<DF l="Τρόπος" v={ln.mode==="simo"?"SIM Only":"Επιδότηση"+(ln.subsidy?" €"+ln.subsidy:"")}/>
+<DF l="Τύπος" v={ln.nlp==="port"?"Φορητότητα"+(ln.fromProv?" από "+ln.fromProv:""):"Νέα Γραμμή"}/>
+{ln.mobNum&&<DF l="Κινητό" v={ln.mobNum}/>}{ln.landNum&&<DF l="Σταθερό" v={ln.landNum}/>}
+</div></div>))
+:<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
+{[["Πρόγραμμα",r.prog],["Τιμή",r.price?"€"+r.price:"—"],["Τύπος",r.lt]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div>}
+{r.lines&&r.lines.length>0&&<div style={{background:"#F5F5F5",borderRadius:8,padding:10,marginTop:6,display:"flex",gap:16,justifyContent:"center",fontSize:"0.82rem",fontWeight:700}}>
+<span style={{color:"#1565C0"}}>📱 €{r.lines.filter(l=>l.type==="mobile").reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)}</span>
+<span style={{color:"#E65100"}}>📞 €{r.lines.filter(l=>l.type==="landline").reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)}</span>
+<span style={{color:"#2E7D32"}}>💰 €{r.lines.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)}</span>
+<span style={{fontSize:"0.68rem",color:"#888",fontStyle:"italic"}}>* Συμπ. ΦΠΑ</span>
+</div>}
+</div>
 
 <div style={{padding:"12px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>🚚 Courier</div>
