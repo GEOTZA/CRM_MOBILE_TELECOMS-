@@ -11,7 +11,7 @@ console.log("🔌 CRM Config:", {USE_SUPA, SUPA_URL: SUPA_URL ? SUPA_URL.substri
 const supa = { from: t => ({
   select: async (c="*") => { if(!USE_SUPA) return {data:null}; const r=await fetch(`${SUPA_URL}/rest/v1/${t}?select=${c}`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}}); return {data:await r.json()}; },
   insert: async d => { if(!USE_SUPA) return {data:d}; const r=await fetch(`${SUPA_URL}/rest/v1/${t}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify(d)}); return {data:await r.json()}; },
-  update: async v => ({eq: async (c,val) => { if(!USE_SUPA) return {data:v}; await fetch(`${SUPA_URL}/rest/v1/${t}?${c}=eq.${val}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(v)}); return {data:v}; }}),
+  update: v => ({eq: async (c,val) => { if(!USE_SUPA) return {data:v}; await fetch(`${SUPA_URL}/rest/v1/${t}?${c}=eq.${val}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(v)}); return {data:v}; }}),
   delete: () => ({eq: async (c,val) => { if(!USE_SUPA) return {}; await fetch(`${SUPA_URL}/rest/v1/${t}?${c}=eq.${val}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}}); return {}; }}),
 })};
 // SHA-256 hash for password encryption
