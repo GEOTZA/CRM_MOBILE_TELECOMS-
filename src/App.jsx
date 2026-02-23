@@ -169,6 +169,7 @@ const doLogin=async()=>{
           if(!u.active){alert("Ο λογαριασμός είναι απενεργοποιημένος");return;}
           if(u.paused){alert("Ο λογαριασμός είναι σε παύση");return;}
           const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0};
+          console.log("✅ LOGIN SUCCESS - setting cu and loggedIn=true", cu.name, cu.role);
           setCU(cu);
           setLI(true);
           setGDPR(u.gdpr_consent||false);
@@ -251,7 +252,7 @@ const saveReq=async(f)=>{
 }
 
 // LOGIN SCREEN
-if(!loggedIn)return(
+if(!cu)return(
 <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#1A1A2E,#16213E)",fontFamily:"'DM Sans',sans-serif"}}>
 <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
 <div style={{background:"white",borderRadius:16,padding:36,width:380,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
