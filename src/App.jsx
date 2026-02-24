@@ -180,7 +180,7 @@ export default function App(){
 const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
 const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);
 const[afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
-const[sbOpen,setSbOpen]=useState(true);
+const[sbOpen,setSbOpen]=useState(true);const[qSearch,setQSearch]=useState("");
 const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
 const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]=useState("list");
 const[selTix,setSelTix]=useState(null);const[sysPaused,setSysPaused]=useState(false);
@@ -379,6 +379,30 @@ return(
 <div style={{width:sbOpen?220:50,minWidth:sbOpen?220:50,background:"#1A1A2E",transition:"all 0.3s",overflow:"hidden",position:"sticky",top:90,height:"calc(100vh - 90px)"}}>
 <div style={{padding:"8px 0"}}>
 <button onClick={()=>setSbOpen(!sbOpen)} style={{width:"100%",padding:"10px 14px",background:"none",border:"none",color:"rgba(255,255,255,0.6)",cursor:"pointer",textAlign:sbOpen?"right":"center",fontSize:"0.9rem"}}>{sbOpen?"◀":"▶"}</button>
+
+{/* Quick Search */}
+{sbOpen?<div style={{padding:"4px 12px 10px"}}>
+<div style={{position:"relative"}}>
+<input value={qSearch} onChange={e=>setQSearch(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&qSearch.trim()){setTab("dash");setVM("list");setSF("all");}}} placeholder="🔍 Αναζήτηση..." style={{width:"100%",padding:"7px 10px 7px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.15)",background:"rgba(255,255,255,0.08)",color:"white",fontSize:"0.76rem",outline:"none"}}/>
+{qSearch&&<span onClick={()=>setQSearch("")} style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",cursor:"pointer",color:"rgba(255,255,255,0.4)",fontSize:"0.8rem"}}>✕</span>}
+</div>
+{qSearch.trim().length>=2&&(()=>{
+  const q=qSearch.toLowerCase();
+  const mReqs=reqs.filter(r=>[r.id,r.ln,r.fn,r.afm,r.mob,r.ph,r.agentName,r.partner,r.prog].some(v=>(v||"").toLowerCase().includes(q))).slice(0,5);
+  const mTix=tix.filter(t=>[t.id,t.cname,t.afm,t.reason].some(v=>(v||"").toLowerCase().includes(q))).slice(0,3);
+  return(mReqs.length>0||mTix.length>0)?<div style={{position:"absolute",left:12,right:12,background:"#2A2A3E",borderRadius:8,padding:6,zIndex:100,maxHeight:250,overflowY:"auto",boxShadow:"0 4px 16px rgba(0,0,0,0.3)"}}>
+  {mReqs.length>0&&<div style={{fontSize:"0.62rem",color:"rgba(255,255,255,0.4)",padding:"2px 6px",fontWeight:600}}>📊 ΑΙΤΗΣΕΙΣ</div>}
+  {mReqs.map(r=><div key={r.id} onClick={()=>{setSel(r);setTab("dash");setVM("detail");setQSearch("");}} style={{padding:"6px 8px",borderRadius:4,cursor:"pointer",fontSize:"0.74rem",color:"white",display:"flex",justifyContent:"space-between"}} onMouseOver={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseOut={e=>e.currentTarget.style.background=""}>
+    <span><strong style={{color:pr.color}}>{r.id}</strong> {r.ln} {r.fn}</span>
+    <span style={{padding:"1px 6px",borderRadius:3,fontSize:"0.6rem",background:ST[r.status]?.bg,color:ST[r.status]?.c}}>{ST[r.status]?.i}</span>
+  </div>)}
+  {mTix.length>0&&<div style={{fontSize:"0.62rem",color:"rgba(255,255,255,0.4)",padding:"2px 6px",fontWeight:600,marginTop:4}}>🎫 ΑΙΤΗΜΑΤΑ</div>}
+  {mTix.map(t=><div key={t.id} onClick={()=>{setSelTix(t);setTab("tix");setQSearch("");}} style={{padding:"6px 8px",borderRadius:4,cursor:"pointer",fontSize:"0.74rem",color:"white"}} onMouseOver={e=>e.currentTarget.style.background="rgba(255,255,255,0.1)"} onMouseOut={e=>e.currentTarget.style.background=""}>
+    <strong style={{color:"#FF9800"}}>{t.id}</strong> {t.cname} — {t.reason}
+  </div>)}
+  </div>:null;})()}
+</div>
+:<div onClick={()=>setSbOpen(true)} style={{padding:"8px 0",textAlign:"center",cursor:"pointer",color:"rgba(255,255,255,0.4)",fontSize:"1rem"}}>🔍</div>}
 
 {[["dash","📊","Αιτήσεις",true],
 ["search","🔍","Αναζήτηση",true],
