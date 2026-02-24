@@ -180,6 +180,8 @@ export default function App(){
 const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
 const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);
 const[afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
+const[sbOpen,setSbOpen]=useState(true);
+const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
 const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]=useState("list");
 const[selTix,setSelTix]=useState(null);const[sysPaused,setSysPaused]=useState(false);
 const[lf,setLF]=useState({un:"",pw:""});
@@ -328,7 +330,8 @@ if(!cu)return(
 // MAIN UI
 return(
 <div style={{minHeight:"100vh",fontFamily:"'DM Sans',sans-serif",background:"#F0F2F5",color:"#1A1A2E"}}>
-<style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');
+@media(max-width:768px){.crm-sb{position:fixed!important;z-index:99!important;height:100vh!important;top:0!important;left:0!important;}.crm-main{margin-left:0!important;}}`}</style>
 
 {/* HEADER */}
 <div style={{background:pr.grad,position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
@@ -346,21 +349,36 @@ return(
 <span style={{color:"rgba(255,255,255,0.9)",fontSize:"0.8rem"}}>{cu.name}</span>
 <button onClick={()=>{auditLog(cu?.id,"logout","users",cu?.id,{});setLI(false);setCU(null);setLF({un:"",pw:""});}} style={{background:"rgba(255,255,255,0.2)",color:"white",border:"1px solid rgba(255,255,255,0.3)",padding:"4px 12px",borderRadius:6,cursor:"pointer",fontSize:"0.75rem",fontWeight:600}}>Logout</button>
 <span style={{fontSize:"0.65rem",padding:"2px 8px",borderRadius:4,background:USE_SUPA?"rgba(76,175,80,0.3)":"rgba(255,152,0,0.3)",color:"white",fontWeight:600}}>{USE_SUPA?"🟢 Online":"🟡 Local"}</span>
-</div></div></div>
-
-{/* PROVIDERS */}
-<div style={{display:"flex",justifyContent:"center",gap:6,padding:"12px 20px",background:"white",borderBottom:"1px solid #E8E8E8"}}>
-{Object.entries(PROVIDERS).map(([k,p])=><button key={k} onClick={()=>{setProv(k);setSF("all");setVM("list");setTab("dash");}} style={{padding:"8px 20px",borderRadius:8,border:prov===k?"none":"2px solid #E0E0E0",background:prov===k?p.grad:"white",color:prov===k?"white":"#666",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.8rem",boxShadow:prov===k?"0 3px 10px rgba(0,0,0,0.12)":"none"}}>{p.icon} {p.name}</button>)}
+</div></div>
+{/* PROVIDERS in header */}
+<div style={{display:"flex",justifyContent:"center",gap:6,padding:"6px 20px",background:"rgba(0,0,0,0.15)"}}>
+{Object.entries(PROVIDERS).map(([k,p])=><button key={k} onClick={()=>{setProv(k);setSF("all");setVM("list");setTab("dash");}} style={{padding:"5px 16px",borderRadius:6,border:"none",background:prov===k?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:prov===k?1:0.7}}>{p.icon} {p.name}</button>)}
+</div>
 </div>
 
-{/* MAIN TABS */}
-<div style={{display:"flex",background:"white",borderBottom:"2px solid #E8E8E8",padding:"0 20px",overflowX:"auto"}}>
-{[["dash","📊 Αιτήσεις"],["tix","🎫 Αιτήματα"],P.reports&&["reports","📊 Reports"],P.users&&["users","👥 Χρήστες"],P.adminPanel&&["admin","👑 Admin Panel"]].filter(Boolean).map(([k,l])=>
-<div key={k} onClick={()=>{setTab(k);setVM("list");setSelTix(null);}} style={{padding:"11px 18px",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.82rem",color:tab===k?pr.color:"#888",borderBottom:`3px solid ${tab===k?pr.color:"transparent"}`,whiteSpace:"nowrap"}}>{l}</div>
-)}
-</div>
+{/* ═══ SIDEBAR + CONTENT LAYOUT ═══ */}
+<div style={{display:"flex",minHeight:"calc(100vh - 90px)"}}>
 
-<div style={{padding:20,maxWidth:1400,margin:"0 auto"}}>
+{/* SIDEBAR */}
+<div style={{width:sbOpen?220:50,minWidth:sbOpen?220:50,background:"#1A1A2E",transition:"all 0.3s",overflow:"hidden",position:"sticky",top:90,height:"calc(100vh - 90px)"}}>
+<div style={{padding:"8px 0"}}>
+<button onClick={()=>setSbOpen(!sbOpen)} style={{width:"100%",padding:"10px 14px",background:"none",border:"none",color:"rgba(255,255,255,0.6)",cursor:"pointer",textAlign:sbOpen?"right":"center",fontSize:"0.9rem"}}>{sbOpen?"◀":"▶"}</button>
+
+{[["dash","📊","Αιτήσεις",true],
+["search","🔍","Αναζήτηση",true],
+["tix","🎫","Αιτήματα",true],
+["reports","📈","Reports",P.reports],
+["users","👥","Χρήστες",P.users],
+["admin","👑","Admin",P.adminPanel]
+].filter(x=>x[3]).map(([k,ic,l])=>
+<div key={k} onClick={()=>{setTab(k);setVM("list");setSelTix(null);}} style={{padding:sbOpen?"10px 18px":"10px 0",cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:tab===k?"rgba(255,255,255,0.1)":"transparent",borderLeft:tab===k?`3px solid ${pr.color}`:"3px solid transparent",color:tab===k?"white":"rgba(255,255,255,0.55)",transition:"all 0.2s"}}>
+<span style={{fontSize:"1rem",minWidth:20,textAlign:"center"}}>{ic}</span>
+{sbOpen&&<span style={{fontFamily:"'Outfit'",fontWeight:tab===k?700:500,fontSize:"0.82rem",whiteSpace:"nowrap"}}>{l}</span>}
+</div>)}
+</div></div>
+
+{/* MAIN CONTENT */}
+<div style={{flex:1,padding:20,maxWidth:1200,margin:"0 auto",overflow:"auto"}}>
 
 {/* ═══ DASHBOARD ═══ */}
 {tab==="dash"&&vm==="list"&&(<div>
@@ -408,6 +426,77 @@ return(
 {tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updatedReq={...sel,status:s};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,status:s}:r);console.log("📋 Reqs after update:",n.length,"found:",n.some(r=>r.id===sel.id));return n;});setSel(updatedReq);setSF("all");if(USE_SUPA){try{await supa.from("requests").update({status:s}).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
+{/* ═══ SEARCH ═══ */}
+{tab==="search"&&(()=>{
+const ss=v=>e=>setSrch(p=>({...p,[v]:e.target.value}));
+const clear=()=>setSrch({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
+const allR=P.viewAll?reqs.filter(x=>x.prov===prov):P.ownAgents?reqs.filter(x=>x.prov===prov&&x.partner===cu.partner):reqs.filter(x=>x.prov===prov&&x.agentId===cu.id);
+let res=allR;
+if(srch.afm)res=res.filter(r=>(r.afm||"").includes(srch.afm));
+if(srch.adt)res=res.filter(r=>(r.adt||"").toLowerCase().includes(srch.adt.toLowerCase()));
+if(srch.reqId)res=res.filter(r=>(r.id||"").toLowerCase().includes(srch.reqId.toLowerCase()));
+if(srch.phone)res=res.filter(r=>(r.mob||"").includes(srch.phone)||(r.ph||"").includes(srch.phone));
+if(srch.partner)res=res.filter(r=>r.partner===srch.partner);
+if(srch.agent)res=res.filter(r=>r.agentName===srch.agent);
+if(srch.status)res=res.filter(r=>r.status===srch.status);
+if(srch.prog)res=res.filter(r=>{const lns=r.lines||[];return r.prog?.includes(srch.prog)||lns.some(l=>l.prog?.includes(srch.prog));});
+if(srch.dateFrom)res=res.filter(r=>r.created>=srch.dateFrom);
+if(srch.dateTo)res=res.filter(r=>r.created<=srch.dateTo+"T23:59");
+const uniqAgents=[...new Set(allR.map(r=>r.agentName).filter(Boolean))];
+const uniqPartners=[...new Set(allR.map(r=>r.partner).filter(Boolean))];
+const sIS={...iS,fontSize:"0.78rem"};
+const fL={fontSize:"0.7rem",color:"#888",fontWeight:600,marginBottom:2};
+return(<div>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:16}}>🔍 Αναζήτηση Αιτήσεων — {pr.name}</h1>
+<div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+
+{/* FILTERS PANEL */}
+<div style={{width:260,background:"white",borderRadius:12,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",flexShrink:0}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:12}}>Φίλτρα</div>
+<div style={{display:"flex",flexDirection:"column",gap:10}}>
+<div><div style={fL}>ΑΦΜ</div><input value={srch.afm} onChange={ss("afm")} placeholder="ΑΦΜ..." style={sIS}/></div>
+<div><div style={fL}>Αριθμός Ταυτότητας</div><input value={srch.adt} onChange={ss("adt")} placeholder="ΑΔΤ..." style={sIS}/></div>
+<div><div style={fL}>Κωδικός Αίτησης</div><input value={srch.reqId} onChange={ss("reqId")} placeholder="REQ-..." style={sIS}/></div>
+<div><div style={fL}>Αριθμός Τηλεφώνου</div><input value={srch.phone} onChange={ss("phone")} placeholder="69..." style={sIS}/></div>
+<div><div style={fL}>Πρόγραμμα</div><input value={srch.prog} onChange={ss("prog")} placeholder="Πρόγραμμα..." style={sIS}/></div>
+<div><div style={fL}>Ημ/νία Από</div><input type="date" value={srch.dateFrom} onChange={ss("dateFrom")} style={sIS}/></div>
+<div><div style={fL}>Ημ/νία Έως</div><input type="date" value={srch.dateTo} onChange={ss("dateTo")} style={sIS}/></div>
+<div><div style={fL}>Συνεργάτης</div><select value={srch.partner} onChange={ss("partner")} style={sIS}><option value="">Όλοι</option>{uniqPartners.map(p=><option key={p}>{p}</option>)}</select></div>
+<div><div style={fL}>Agent</div><select value={srch.agent} onChange={ss("agent")} style={sIS}><option value="">Όλοι</option>{uniqAgents.map(a=><option key={a}>{a}</option>)}</select></div>
+<div><div style={fL}>Κατάσταση</div><select value={srch.status} onChange={ss("status")} style={sIS}><option value="">Όλες</option>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
+<div style={{display:"flex",gap:6,marginTop:4}}>
+<button onClick={clear} style={{flex:1,padding:"8px",borderRadius:6,border:"1px solid #DDD",background:"white",cursor:"pointer",fontSize:"0.78rem",fontWeight:600}}>✖ Καθαρισμός</button>
+</div>
+</div></div>
+
+{/* RESULTS */}
+<div style={{flex:1,minWidth:0}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<span style={{fontSize:"0.82rem",color:"#666",fontWeight:600}}>Εγγραφές: {res.length}</span>
+<button onClick={()=>expXLSX(res,`Search_${new Date().toISOString().slice(0,10)}.xlsx`,"Αναζήτηση")} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.75rem"}}>
+<thead><tr style={{background:"#FAFAFA"}}>
+{["ID","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Κατάσταση","Agent","Ημ/νία","Τιμή"].map(h=><th key={h} style={{padding:"8px 8px",textAlign:"left",fontWeight:700,color:"#666",borderBottom:"2px solid #E0E0E0",whiteSpace:"nowrap"}}>{h}</th>)}
+</tr></thead>
+<tbody>{res.length===0?<tr><td colSpan={10} style={{padding:30,textAlign:"center",color:"#999"}}>Δεν βρέθηκαν αποτελέσματα</td></tr>:
+res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);setTab("dash");setVM("detail");}}>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0",fontWeight:600,color:pr.color}}>{r.id}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.ln}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.fn}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.afm}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.mob}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.prog}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}><span style={{padding:"2px 8px",borderRadius:4,fontSize:"0.68rem",fontWeight:700,background:ST[r.status]?.bg,color:ST[r.status]?.c}}>{ST[r.status]?.i} {ST[r.status]?.l}</span></td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.agentName}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.created?.slice(0,10)}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0",fontWeight:700,color:"#2E7D32"}}>€{r.price}</td>
+</tr>)}
+</tbody></table>
+</div></div>
+</div></div>);})()}
+
 {tab==="tix"&&!selTix&&<TixList tix={tix} cu={cu} P={P} pr={pr} onSel={setSelTix} onCreate={t=>{const nt={...t,id:`TK-${String(tix.length+1).padStart(5,"0")}`,by:cu.id,byName:cu.name,byRole:cu.role,at:ts(),status:"open",msgs:[{uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:ts()}]};setTix(p=>[nt,...p]);users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason}`));}}/>}
 {tab==="tix"&&selTix&&<TixDetail t={selTix} cu={cu} pr={pr} onBack={()=>setSelTix(null)} onReply={txt=>{const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση ${selTix.id}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση ${selTix.id}`));}} onClose={()=>{setTix(p=>p.map(t=>t.id===selTix.id?{...t,status:"closed"}:t));setSelTix(p=>({...p,status:"closed"}));}}/>}
 
@@ -418,7 +507,7 @@ return(
 {tab==="fields"&&P.fields&&<FieldMgmt pr={pr}/>}
 
 {/* ═══ REPORTS ═══ */}
-{tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport}/>}
+{tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport} expXLSX={expXLSX}/>}
 
 {/* SYSTEM */}
 
@@ -426,7 +515,9 @@ return(
 
 {tab==="sys"&&P.pause&&<SysMgmt sp={sysPaused} setSP={setSysPaused} users={users} setUsers={setUsers} pr={pr}/>}
 
-</div></div>);}
+</div>{/* end MAIN CONTENT */}
+</div>{/* end SIDEBAR+CONTENT flex */}
+</div>);}
 
 // ═══ REQUEST FORM ═══
 // Form field wrapper — defined outside to prevent focus loss on re-render
@@ -900,9 +991,33 @@ return(<div>
 
 // ═══ ADMIN PANEL — All hooks at top level ═══
 // ═══ REPORTS PANEL ═══
-function ReportsPanel({reqs,users,pr,prov,PROVIDERS,ST,expReport}){
+function ReportsPanel({reqs,users,pr,prov,PROVIDERS,ST,expReport,expXLSX}){
 const[rTab,setRTab]=useState("overview");const[rProv,setRProv]=useState("all");
+const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",svc:"",dateFrom:"",dateTo:"",partner:"",provider:"",agent:"",status:"",name:""});
+const[srchRes,setSrchRes]=useState(null);
 const allReqs=rProv==="all"?reqs:reqs.filter(r=>r.prov===rProv);
+
+// Search function
+const doSearch=()=>{
+  let res=[...reqs];
+  if(srch.afm) res=res.filter(r=>(r.afm||"").includes(srch.afm));
+  if(srch.adt) res=res.filter(r=>(r.adt||"").includes(srch.adt));
+  if(srch.reqId) res=res.filter(r=>(r.id||"").toLowerCase().includes(srch.reqId.toLowerCase()));
+  if(srch.phone) res=res.filter(r=>(r.mob||"").includes(srch.phone)||(r.ph||"").includes(srch.phone)||(r.lines||[]).some(l=>(l.mobNum||"").includes(srch.phone)||(l.landNum||"").includes(srch.phone)));
+  if(srch.svc) res=res.filter(r=>srch.svc==="mobile"?(r.lines||[]).some(l=>l.type==="mobile"):srch.svc==="landline"?(r.lines||[]).some(l=>l.type==="landline"):true);
+  if(srch.dateFrom) res=res.filter(r=>(r.created||"")>=srch.dateFrom);
+  if(srch.dateTo) res=res.filter(r=>(r.created||"").slice(0,10)<=srch.dateTo);
+  if(srch.partner) res=res.filter(r=>(r.partner||"")===srch.partner);
+  if(srch.provider) res=res.filter(r=>(r.prov||"")===srch.provider);
+  if(srch.agent) res=res.filter(r=>(r.agentName||"")===srch.agent);
+  if(srch.status) res=res.filter(r=>(r.status||"")===srch.status);
+  if(srch.name) res=res.filter(r=>`${r.ln} ${r.fn}`.toLowerCase().includes(srch.name.toLowerCase()));
+  setSrchRes(res);
+};
+const clearSearch=()=>{setSrch({afm:"",adt:"",reqId:"",phone:"",svc:"",dateFrom:"",dateTo:"",partner:"",provider:"",agent:"",status:"",name:""});setSrchRes(null);};
+const ss=(k,v)=>setSrch(p=>({...p,[k]:v}));
+const uniqueAgents=[...new Set(reqs.map(r=>r.agentName).filter(Boolean))].sort();
+const uniquePartners=[...new Set(reqs.map(r=>r.partner).filter(Boolean))].sort();
 const activeReqs=allReqs.filter(r=>r.status==="active"||r.status==="credited");
 
 // ─── AGGREGATIONS ───
@@ -944,9 +1059,65 @@ return(
 
 {/* Report Tabs */}
 <div style={{display:"flex",gap:4,marginBottom:16,flexWrap:"wrap"}}>
-{[["overview","📊 Επισκόπηση"],["provider","🏢 Ανά Πάροχο"],["program","📱 Ανά Πρόγραμμα"],["agent","👤 Ανά Agent"],["partner","🤝 Ανά Partner"],["status","📋 Ανά Κατάσταση"]].map(([k,l])=>
+{[["search","🔍 Αναζήτηση"],["overview","📊 Επισκόπηση"],["provider","🏢 Ανά Πάροχο"],["program","📱 Ανά Πρόγραμμα"],["agent","👤 Ανά Agent"],["partner","🤝 Ανά Partner"],["status","📋 Ανά Κατάσταση"]].map(([k,l])=>
 <button key={k} onClick={()=>setRTab(k)} style={{padding:"7px 16px",borderRadius:8,border:"none",background:rTab===k?pr.color:"#E8E8E8",color:rTab===k?"white":"#666",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>{l}</button>)}
 </div>
+
+{/* ─── SEARCH ─── */}
+{rTab==="search"&&<div>
+<div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+{/* Filter Panel */}
+<div style={{background:"white",borderRadius:10,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",minWidth:280,flex:"0 0 300px"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.95rem",marginBottom:14,borderBottom:`2px solid ${pr.color}`,paddingBottom:6}}>🔍 Φίλτρα Αναζήτησης</div>
+<div style={{display:"flex",flexDirection:"column",gap:10}}>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>ΑΦΜ</label><input value={srch.afm} onChange={e=>ss("afm",e.target.value)} placeholder="ΑΦΜ..." style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Ονοματεπώνυμο</label><input value={srch.name} onChange={e=>ss("name",e.target.value)} placeholder="Επώνυμο ή Όνομα..." style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Αριθμός Ταυτότητας</label><input value={srch.adt} onChange={e=>ss("adt",e.target.value)} placeholder="ΑΔΤ..." style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Κωδικός Αίτησης</label><input value={srch.reqId} onChange={e=>ss("reqId",e.target.value)} placeholder="REQ-..." style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Αριθμός Τηλεφώνου</label><input value={srch.phone} onChange={e=>ss("phone",e.target.value)} placeholder="69xxxxxxxx..." style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Είδος Αίτησης</label><select value={srch.svc} onChange={e=>ss("svc",e.target.value)} style={iS}><option value="">— Όλα —</option><option value="mobile">📱 Κινητή</option><option value="landline">📞 Σταθερή</option></select></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Εισαγωγή Από</label><input type="date" value={srch.dateFrom} onChange={e=>ss("dateFrom",e.target.value)} style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Εισαγωγή Έως</label><input type="date" value={srch.dateTo} onChange={e=>ss("dateTo",e.target.value)} style={iS}/></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Πάροχος</label><select value={srch.provider} onChange={e=>ss("provider",e.target.value)} style={iS}><option value="">— Όλοι —</option>{Object.entries(PROVIDERS).map(([k,p])=><option key={k} value={k}>{p.icon} {p.name}</option>)}</select></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Partner / Κατάστημα</label><select value={srch.partner} onChange={e=>ss("partner",e.target.value)} style={iS}><option value="">— Όλοι —</option>{uniquePartners.map(p=><option key={p}>{p}</option>)}</select></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Agent / Πωλητής</label><select value={srch.agent} onChange={e=>ss("agent",e.target.value)} style={iS}><option value="">— Όλοι —</option>{uniqueAgents.map(a=><option key={a}>{a}</option>)}</select></div>
+<div><label style={{fontSize:"0.72rem",color:"#666",fontWeight:600,display:"block",marginBottom:3}}>Κατάσταση</label><select value={srch.status} onChange={e=>ss("status",e.target.value)} style={iS}><option value="">— Όλες —</option>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
+<button onClick={doSearch} style={{padding:"10px",borderRadius:8,border:"none",background:pr.color,color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.88rem",marginTop:4}}>🔍 Αναζήτηση</button>
+<div style={{display:"flex",gap:8}}>
+<button onClick={clearSearch} style={{flex:1,padding:"8px",borderRadius:6,border:"1px solid #DDD",background:"white",color:"#666",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>✕ Καθαρισμός</button>
+<button onClick={()=>{setSrchRes(null);doSearch();}} style={{flex:1,padding:"8px",borderRadius:6,border:"1px solid #DDD",background:"white",color:"#666",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>↻ Ανανέωση</button>
+</div>
+</div></div>
+
+{/* Results */}
+<div style={{flex:1,minWidth:0}}>
+{srchRes===null?<div style={{background:"white",borderRadius:10,padding:40,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}><div style={{fontSize:"3rem",marginBottom:10}}>🔍</div><div style={{color:"#888",fontSize:"0.9rem"}}>Συμπληρώστε τα φίλτρα και πατήστε <strong>Αναζήτηση</strong></div></div>
+:srchRes.length===0?<div style={{background:"white",borderRadius:10,padding:40,textAlign:"center",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}><div style={{fontSize:"3rem",marginBottom:10}}>📭</div><div style={{color:"#888",fontSize:"0.9rem"}}>Δεν βρέθηκαν αποτελέσματα</div></div>
+:<div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<span style={{fontWeight:700,fontSize:"0.85rem"}}>Εγγραφές: {srchRes.length}</span>
+<button onClick={()=>expXLSX(srchRes,"Αναζήτηση_"+new Date().toISOString().slice(0,10)+".xlsx","Αποτελέσματα")} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse",minWidth:900}}><thead><tr>
+{["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Κατάσταση","Partner","Agent","Ημ/νία","Πάγιο €"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontSize:"0.7rem",fontWeight:700,color:"#666",borderBottom:"2px solid #E0E0E0",whiteSpace:"nowrap",position:"sticky",top:0,background:"white"}}>{h}</th>)}
+</tr></thead><tbody>
+{srchRes.map(r=><tr key={r.id} style={{cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#F5F5F5"} onMouseOut={e=>e.currentTarget.style.background=""}>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",fontWeight:700,color:pr.color,borderBottom:"1px solid #F0F0F0"}}>{r.id}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{PROVIDERS[r.prov]?.icon} {PROVIDERS[r.prov]?.name}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",fontWeight:600,borderBottom:"1px solid #F0F0F0"}}>{r.ln}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.fn}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.afm}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.mob}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.prog||(r.lines||[]).map(l=>l.prog).join(", ")}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}><span style={{padding:"2px 8px",borderRadius:4,fontSize:"0.68rem",fontWeight:600,background:ST[r.status]?.bg,color:ST[r.status]?.c}}>{ST[r.status]?.i} {ST[r.status]?.l}</span></td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.partner}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.agentName}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",borderBottom:"1px solid #F0F0F0"}}>{r.created}</td>
+<td style={{padding:"7px 10px",fontSize:"0.75rem",fontWeight:700,color:"#2E7D32",borderBottom:"1px solid #F0F0F0"}}>€{parseFloat(r.price||0).toFixed(2)}</td>
+</tr>)}
+</tbody></table></div></div>}
+</div></div></div>}
 
 {/* ─── OVERVIEW ─── */}
 {rTab==="overview"&&<div>
