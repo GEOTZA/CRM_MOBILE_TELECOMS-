@@ -261,7 +261,7 @@ const loadFromSupa=async()=>{
     const rRes=await fetch(`${SUPA_URL}/rest/v1/requests?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const rData=await rRes.json();
     if(rData&&Array.isArray(rData)){
-      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,lines:r.lines?JSON.parse(r.lines):[],comments:[]})));
+      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
     }
     // Load tickets  
     const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -291,7 +291,21 @@ const saveReq=async(f)=>{
   // Save to Supabase
   if(USE_SUPA){
     try{
-      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"active",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,lines:JSON.stringify(nr.lines||[])};
+      // Upload documents to Supabase Storage
+      const docMeta=[];
+      if(nr.docs&&nr.docs.length>0){
+        for(const doc of nr.docs){
+          if(doc.file&&doc.type){
+            try{
+              const ext=doc.name.split(".").pop()||"bin";
+              const path=`${nr.id}/${Date.now()}_${doc.type}.${ext}`;
+              await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":doc.file.type},body:doc.file});
+              docMeta.push({type:doc.type,name:doc.name,path,uploaded:new Date().toISOString()});
+            }catch(e){console.error("Doc upload error:",e);}
+          }else if(doc.path){docMeta.push(doc);}
+        }
+      }
+      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"active",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
       // Also set summary fields from first line for backwards compatibility
       if(nr.lines&&nr.lines.length>0){dbRow.prog=nr.lines[0].prog;dbRow.price=String(nr.lines.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2));dbRow.nlp=nr.lines[0].nlp==="port"?"Φορητότητα":"Νέα Γραμμή";}
       if(f.id){
@@ -300,6 +314,8 @@ const saveReq=async(f)=>{
       }else{
         await supa.from("requests").insert(dbRow);
         auditLog(cu.id,"create","requests",nr.id,{provider:prov,afm:nr.afm});
+        // Notify backoffice & director on new request
+        users.filter(u=>u.role==="backoffice"||u.role==="director").forEach(u=>addN(u.id,`📨 Νέα αίτηση ${nr.id} από ${cu.name}`));
       }
       // Auto-save customer to AFM database (upsert)
       if(nr.afm){
@@ -423,7 +439,7 @@ return(
 {tab==="dash"&&(vm==="form"||vm==="edit")&&<ReqForm pr={pr} prov={prov} onSave={saveReq} onCancel={()=>setVM("list")} ed={vm==="edit"?sel:null} db={afmDb} P={P} cu={cu}/>}
 
 {/* DETAIL */}
-{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updatedReq={...sel,status:s};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,status:s}:r);console.log("📋 Reqs after update:",n.length,"found:",n.some(r=>r.id===sel.id));return n;});setSel(updatedReq);setSF("all");if(USE_SUPA){try{await supa.from("requests").update({status:s}).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
+{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updatedReq={...sel,status:s};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,status:s}:r);console.log("📋 Reqs after update:",n.length,"found:",n.some(r=>r.id===sel.id));return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);if(USE_SUPA){try{await supa.from("requests").update({status:s}).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
 {/* ═══ SEARCH ═══ */}
@@ -497,8 +513,30 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 </div></div>
 </div></div>);})()}
 
-{tab==="tix"&&!selTix&&<TixList tix={tix} cu={cu} P={P} pr={pr} onSel={setSelTix} onCreate={t=>{const nt={...t,id:`TK-${String(tix.length+1).padStart(5,"0")}`,by:cu.id,byName:cu.name,byRole:cu.role,at:ts(),status:"open",msgs:[{uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:ts()}]};setTix(p=>[nt,...p]);users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason}`));}}/>}
-{tab==="tix"&&selTix&&<TixDetail t={selTix} cu={cu} pr={pr} onBack={()=>setSelTix(null)} onReply={txt=>{const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση ${selTix.id}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση ${selTix.id}`));}} onClose={()=>{setTix(p=>p.map(t=>t.id===selTix.id?{...t,status:"closed"}:t));setSelTix(p=>({...p,status:"closed"}));}}/>}
+{tab==="tix"&&!selTix&&<TixList tix={tix} cu={cu} P={P} pr={pr} reqs={reqs} afmDb={afmDb} onSel={setSelTix} onCreate={async(t)=>{
+  const tkId=`TK-${String(tix.length+1).padStart(5,"0")}`;
+  // Upload ticket files
+  const attachments=[];
+  if(t.files&&t.files.length>0){
+    for(const f of t.files){
+      if(f){try{const ext=f.name.split(".").pop()||"bin";const path=`tickets/${tkId}/${Date.now()}_${ext}`;if(USE_SUPA)await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type},body:f});attachments.push({name:f.name,path});}catch(e){console.error("File upload error:",e);}}
+    }
+  }
+  const nt={...t,id:tkId,by:cu.id,byName:cu.name,byRole:cu.role,at:ts(),status:"open",msgs:[{uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:ts(),attachments}]};setTix(p=>[nt,...p]);users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason} — ${t.cname}`));if(t.agentId&&t.agentId!==cu.id)addN(t.agentId,`🎫 Αίτημα ${tkId}: ${t.reason}`);}}/>}
+{tab==="tix"&&selTix&&<TixDetail t={selTix} cu={cu} pr={pr} onBack={()=>setSelTix(null)} onReply={async(txt,files)=>{
+  // Upload attachments
+  const attachments=[];
+  if(files&&files.length>0){
+    for(const f of files){
+      try{
+        const ext=f.name.split(".").pop()||"bin";
+        const path=`tickets/${selTix.id}/${Date.now()}_${ext}`;
+        if(USE_SUPA)await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type},body:f});
+        attachments.push({name:f.name,path});
+      }catch(e){console.error("File upload error:",e);}
+    }
+  }
+  const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts(),attachments};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση ${selTix.id}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση ${selTix.id}`));}} onClose={()=>{setTix(p=>p.map(t=>t.id===selTix.id?{...t,status:"closed"}:t));setSelTix(p=>({...p,status:"closed"}));}}/>}
 
 {/* USERS */}
 {tab==="users"&&P.users&&<UserMgmt users={users} setUsers={setUsers} cu={cu} P={P} pr={pr}/>}
@@ -673,6 +711,32 @@ return(
 <FL l="ΤΚ"><input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/></FL>
 </div></div>
 
+{/* ═══ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ ═══ */}
+<div style={{padding:"14px 20px",background:"#FFF8E1",borderLeft:"4px solid #FF6F00",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>📎 Δικαιολογητικά <span style={{fontSize:"0.72rem",color:"#888",fontWeight:400}}>({(form.docs||[]).length}/6)</span></div>
+{(form.docs||[]).length<6&&<button onClick={()=>{if((form.docs||[]).length<6)s("docs",[...(form.docs||[]),{type:"",file:null,name:"",uploading:false}]);}} style={B("#FF6F00","white",{padding:"5px 12px",fontSize:"0.76rem"})}>➕ Προσθήκη</button>}
+</div>
+{!(form.docs||[]).some(d=>d.type==="id")&&<div style={{background:"#FFEBEE",borderRadius:6,padding:8,marginBottom:8,fontSize:"0.76rem",color:"#C62828",fontWeight:600}}>⚠️ Η Ταυτότητα είναι υποχρεωτική</div>}
+{(form.docs||[]).map((doc,i)=>(
+<div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:6,background:"white",padding:8,borderRadius:8,border:"1px solid #E0E0E0"}}>
+<select value={doc.type} onChange={e=>{const nd=[...(form.docs||[])];nd[i]={...nd[i],type:e.target.value};s("docs",nd);}} style={{...iS,width:220,fontSize:"0.78rem"}}>
+<option value="">— Τύπος —</option>
+<option value="id">🪪 Ταυτότητα</option>
+<option value="provider_bill">📄 Λογαριασμός Παρόχου</option>
+<option value="address_proof">🏠 Αποδεικτικό Διεύθυνσης</option>
+<option value="bank_proof">🏦 Αποδεικτικό Λογαριασμού</option>
+<option value="business_proof">💼 Αποδ. Επαγγελματικής Ιδιότητας</option>
+<option value="other">📁 Λοιπά Έγγραφα</option>
+</select>
+<input type="file" accept="image/*,.pdf" onChange={e=>{const f=e.target.files[0];if(f){const nd=[...(form.docs||[])];nd[i]={...nd[i],file:f,name:f.name};s("docs",nd);}}} style={{flex:1,fontSize:"0.76rem"}}/>
+{doc.name&&<span style={{fontSize:"0.7rem",color:"#4CAF50",fontWeight:600,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>✅ {doc.name}</span>}
+<button onClick={()=>{const nd=[...(form.docs||[])];nd.splice(i,1);s("docs",nd);}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>🗑️</button>
+</div>))}
+{(form.docs||[]).length===0&&<div style={{textAlign:"center",padding:12,color:"#999",fontSize:"0.8rem"}}>Πατήστε "➕ Προσθήκη" για να επισυνάψετε δικαιολογητικά</div>}
+<div style={{fontSize:"0.68rem",color:"#888",marginTop:6,fontStyle:"italic"}}>* Αρχεία: εικόνες ή PDF, μέχρι 6 συνημμένα. Διατηρούνται στη βάση για 60 ημέρες.</div>
+</div>
+
 {/* Status */}
 <div style={{padding:"14px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
@@ -749,6 +813,17 @@ return(
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
 {[["Courier",r.cour],["Διεύθυνση",r.cAddr],["Πόλη",r.cCity],["ΤΚ",r.cTk]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
 
+{/* DOCUMENTS */}
+{(()=>{const docs=r.documents?typeof r.documents==="string"?JSON.parse(r.documents):r.documents:[];return docs.length>0?
+<div style={{padding:"12px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📎 Δικαιολογητικά ({docs.length})</div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+{docs.map((d,i)=>{const labels={id:"🪪 Ταυτότητα",provider_bill:"📄 Λογ.Παρόχου",address_proof:"🏠 Αποδ.Διεύθυνσης",bank_proof:"🏦 Αποδ.Λογαριασμού",business_proof:"💼 Επαγγ.Ιδιότητα",other:"📁 Λοιπά"};
+return <a key={i} href={`${SUPA_URL}/storage/v1/object/authenticated/documents/${d.path}`} target="_blank" rel="noreferrer" style={{padding:"6px 12px",borderRadius:6,background:"white",border:"1px solid #E0E0E0",fontSize:"0.76rem",fontWeight:600,color:"#1565C0",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>{labels[d.type]||d.type} <span style={{fontSize:"0.65rem",color:"#888"}}>{d.name}</span></a>;})}
+</div>
+<div style={{fontSize:"0.65rem",color:"#999",marginTop:6}}>* Τα αρχεία διατηρούνται για 60 ημέρες</div>
+</div>:null;})()}
+
 {/* COMMENTS */}
 <div style={{padding:"14px 20px",background:"#F5F5F5"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>💬 Σχόλια ({r.comments?.length||0})</div>
@@ -773,9 +848,26 @@ return(
 </div></div>);}
 
 // ═══ TICKETS ═══
-function TixList({tix,cu,P,pr,onSel,onCreate}){
-const[show,setShow]=useState(false);const[nt,setNT]=useState({afm:"",cname:"",reason:"",reqId:"",msg:""});
+function TixList({tix,cu,P,pr,onSel,onCreate,reqs,afmDb}){
+const[show,setShow]=useState(false);const[nt,setNT]=useState({afm:"",cname:"",reason:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null});
+const[custReqs,setCustReqs]=useState([]);
 const vis=P.viewAll?tix:tix.filter(t=>t.by===cu.id);
+
+// Customer search by AFM
+const searchCust=(afm)=>{
+  const q=afm.trim();if(!q)return;
+  // Find customer in AFM database
+  const cust=afmDb.find(x=>x.afm===q);
+  // Find all requests for this AFM
+  const cReqs=reqs.filter(r=>r.afm===q);
+  if(cust||cReqs.length>0){
+    const name=cust?`${cust.ln} ${cust.fn}`:(cReqs[0]?`${cReqs[0].ln} ${cReqs[0].fn}`:"");
+    const lastReq=cReqs[0];
+    setNT(p=>({...p,cname:name,agentName:lastReq?.agentName||"",agentId:lastReq?.agentId||"",custInfo:cust||null}));
+    setCustReqs(cReqs);
+  }else{setNT(p=>({...p,cname:"",agentName:"",agentId:"",custInfo:null}));setCustReqs([]);alert("Δεν βρέθηκε πελάτης με ΑΦΜ: "+q);}
+};
+
 return(<div>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900}}>🎫 Αιτήματα</h1>
@@ -783,13 +875,50 @@ return(<div>
 
 {show&&<div style={{background:"white",borderRadius:12,padding:18,marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
 <h3 style={{fontFamily:"'Outfit'",fontWeight:700,marginBottom:10,fontSize:"0.95rem"}}>Νέο Αίτημα</h3>
+
+{/* Step 1: Customer Search */}
+<div style={{background:"#FFFDE7",borderLeft:"4px solid #FFC107",borderRadius:6,padding:12,marginBottom:12}}>
+<div style={{fontWeight:700,fontSize:"0.82rem",marginBottom:8}}>🔍 Αναζήτηση Πελάτη</div>
+<div style={{display:"flex",gap:6}}>
+<input value={nt.afm} onChange={e=>setNT(p=>({...p,afm:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&searchCust(nt.afm)} placeholder="Πληκτρολογήστε ΑΦΜ..." style={{...iS,flex:1}}/>
+<button onClick={()=>searchCust(nt.afm)} style={B("#2196F3","white",{})}>🔍</button>
+</div></div>
+
+{/* Customer Info Card */}
+{(nt.custInfo||nt.cname)&&<div style={{background:"#E8F5E9",borderLeft:"4px solid #4CAF50",borderRadius:6,padding:12,marginBottom:12}}>
+<div style={{fontWeight:700,fontSize:"0.82rem",marginBottom:6}}>👤 Στοιχεία Πελάτη</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:6,fontSize:"0.8rem"}}>
+<div><span style={{color:"#888",fontSize:"0.7rem"}}>Ονοματεπώνυμο</span><br/><strong>{nt.cname}</strong></div>
+{nt.custInfo&&<><div><span style={{color:"#888",fontSize:"0.7rem"}}>Τηλέφωνο</span><br/><strong>{nt.custInfo.mob||nt.custInfo.ph||"—"}</strong></div>
+<div><span style={{color:"#888",fontSize:"0.7rem"}}>Email</span><br/><strong>{nt.custInfo.em||"—"}</strong></div>
+<div><span style={{color:"#888",fontSize:"0.7rem"}}>Πόλη</span><br/><strong>{nt.custInfo.city||"—"}</strong></div></>}
+{nt.agentName&&<div><span style={{color:"#888",fontSize:"0.7rem"}}>Agent</span><br/><strong style={{color:"#1565C0"}}>{nt.agentName}</strong></div>}
+</div>
+{custReqs.length>0&&<div style={{marginTop:8}}>
+<div style={{fontSize:"0.72rem",color:"#666",fontWeight:600,marginBottom:4}}>Αιτήσεις πελάτη ({custReqs.length}):</div>
+<div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+{custReqs.map(r=><span key={r.id} onClick={()=>setNT(p=>({...p,reqId:r.id}))} style={{padding:"3px 8px",borderRadius:4,fontSize:"0.7rem",fontWeight:600,background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c||"#666",cursor:"pointer",border:nt.reqId===r.id?"2px solid #1565C0":"2px solid transparent"}}>{r.id} {ST[r.status]?.i}</span>)}
+</div></div>}
+</div>}
+
+{/* Ticket Form */}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8,marginBottom:8}}>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>ΑΦΜ *</label><input value={nt.afm} onChange={e=>setNT(p=>({...p,afm:e.target.value}))} style={iS}/></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ονοματεπώνυμο *</label><input value={nt.cname} onChange={e=>setNT(p=>({...p,cname:e.target.value}))} style={iS}/></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Λόγος *</label><select value={nt.reason} onChange={e=>setNT(p=>({...p,reason:e.target.value}))} style={iS}><option value="">Επιλέξτε...</option>{TICKET_R.map(r=><option key={r}>{r}</option>)}</select></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Αρ.Αίτησης</label><input value={nt.reqId} onChange={e=>setNT(p=>({...p,reqId:e.target.value}))} placeholder="REQ-..." style={iS}/></div></div>
 <div style={{marginBottom:8}}><label style={{fontSize:"0.74rem",fontWeight:600}}>Μήνυμα *</label><textarea value={nt.msg} onChange={e=>setNT(p=>({...p,msg:e.target.value}))} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></div>
-<button onClick={()=>{if(nt.afm&&nt.cname&&nt.reason&&nt.msg){onCreate(nt);setNT({afm:"",cname:"",reason:"",reqId:"",msg:""});setShow(false);}else alert("Συμπληρώστε τα * πεδία");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>📤 Δημιουργία</button>
+<div style={{marginBottom:8}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+<label style={{fontSize:"0.74rem",fontWeight:600}}>📎 Συνημμένα ({(nt.files||[]).length}/3)</label>
+{(nt.files||[]).length<3&&<button onClick={()=>setNT(p=>({...p,files:[...(p.files||[]),null]}))} style={{fontSize:"0.7rem",padding:"2px 8px",borderRadius:4,border:"1px solid #DDD",background:"#F5F5F5",cursor:"pointer",fontWeight:600}}>➕</button>}
+</div>
+{(nt.files||[]).map((f,i)=>(
+<div key={i} style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+<input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e=>{const fl=e.target.files[0];if(fl){const nf=[...(nt.files||[])];nf[i]=fl;setNT(p=>({...p,files:nf}));}}} style={{flex:1,fontSize:"0.74rem"}}/>
+<button onClick={()=>{const nf=[...(nt.files||[])];nf.splice(i,1);setNT(p=>({...p,files:nf}));}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"3px 6px",cursor:"pointer",fontSize:"0.7rem"}}>✕</button>
+</div>))}
+</div>
+<button onClick={()=>{if(nt.afm&&nt.cname&&nt.reason&&nt.msg){onCreate({...nt});setNT({afm:"",cname:"",reason:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null,files:[]});setCustReqs([]);setShow(false);}else alert("Συμπληρώστε ΑΦΜ, Όνομα, Λόγο και Μήνυμα");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>📤 Δημιουργία</button>
 </div>}
 
 <div style={{background:"white",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"hidden"}}>
@@ -810,18 +939,18 @@ return(<div>
 </tbody></table></div></div>);}
 
 function TixDetail({t,cu,pr,onBack,onReply,onClose}){
-const[rp,setRP]=useState("");
+const[rp,setRP]=useState("");const[rpFiles,setRPFiles]=useState([]);
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
 <div style={{background:pr.grad,padding:"14px 20px",color:"white",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-<div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.1rem"}}>🎫 {t.id}</h2><div style={{opacity:0.85,fontSize:"0.8rem"}}>{t.cname} • {t.reason}</div></div>
+<div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.1rem"}}>🎫 {t.id}</h2><div style={{opacity:0.85,fontSize:"0.8rem"}}>{t.cname} • {t.reason}{t.agentName&&<span> • 👤 {t.agentName}</span>}</div></div>
 <div style={{display:"flex",gap:5}}>
 <span style={bg(t.status==="open"?"#E8F5E9":"#F5F5F5",t.status==="open"?"#2E7D32":"#999")}>{t.status==="open"?"🟢 Ανοικτό":"⚫ Κλειστό"}</span>
 {t.status==="open"&&(cu.role==="backoffice"||cu.role==="supervisor"||cu.role==="admin")&&<button onClick={onClose} style={B("rgba(255,255,255,0.2)","white",{})}>🔒 Κλείσιμο</button>}
 <button onClick={onBack} style={B("rgba(255,255,255,0.2)","white",{})}>← Πίσω</button></div></div>
 
 <div style={{padding:"10px 20px",background:"#F5F5F5",borderBottom:"1px solid #E8E8E8",display:"flex",gap:16,fontSize:"0.8rem",flexWrap:"wrap"}}>
-<span><strong>ΑΦΜ:</strong> {t.afm}</span><span><strong>Αίτηση:</strong> {t.reqId||"—"}</span><span><strong>Δημ:</strong> {t.at}</span></div>
+<span><strong>ΑΦΜ:</strong> {t.afm}</span><span><strong>Πελάτης:</strong> {t.cname}</span><span><strong>Αίτηση:</strong> {t.reqId||"—"}</span>{t.agentName&&<span><strong>Agent:</strong> <span style={{color:"#1565C0"}}>{t.agentName}</span></span>}<span><strong>Δημ:</strong> {t.at}</span></div>
 
 <div style={{padding:"14px 20px",maxHeight:400,overflowY:"auto"}}>
 {t.msgs.map((m,i)=>(
@@ -829,12 +958,21 @@ return(
 <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
 <span style={{fontWeight:700,fontSize:"0.8rem"}}>{ROLES[m.role]?.i} {m.uname}</span>
 <span style={{fontSize:"0.7rem",color:"#999"}}>{m.ts}</span></div>
-<p style={{fontSize:"0.84rem"}}>{m.text}</p></div>))}
+<p style={{fontSize:"0.84rem"}}>{m.text}</p>
+{m.attachments&&m.attachments.length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
+{m.attachments.map((a,j)=><a key={j} href={`${SUPA_URL}/storage/v1/object/authenticated/documents/${a.path}`} target="_blank" rel="noreferrer" style={{padding:"3px 8px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.68rem",fontWeight:600,textDecoration:"none"}}>📎 {a.name}</a>)}
+</div>}
+</div>))}
 </div>
 
-{t.status==="open"&&<div style={{padding:"12px 20px",borderTop:"1px solid #E8E8E8",display:"flex",gap:6}}>
-<input placeholder="Απάντηση..." value={rp} onChange={e=>setRP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&rp.trim()){onReply(rp);setRP("");}}} style={{...iS,flex:1}}/>
-<button onClick={()=>{if(rp.trim()){onReply(rp);setRP("");}}} style={B(pr.color,"white",{})}>📤</button></div>}
+{t.status==="open"&&<div style={{padding:"12px 20px",borderTop:"1px solid #E8E8E8"}}>
+{rpFiles.length>0&&<div style={{display:"flex",gap:4,marginBottom:6,flexWrap:"wrap"}}>
+{rpFiles.map((f,i)=><span key={i} style={{padding:"3px 8px",borderRadius:4,background:"#E8F5E9",fontSize:"0.68rem",fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}>📎 {f.name} <span onClick={()=>setRPFiles(p=>p.filter((_,j)=>j!==i))} style={{cursor:"pointer",color:"#C62828"}}>✕</span></span>)}
+</div>}
+<div style={{display:"flex",gap:6}}>
+<input placeholder="Απάντηση..." value={rp} onChange={e=>setRP(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&rp.trim()){onReply(rp,rpFiles);setRP("");setRPFiles([]);}}} style={{...iS,flex:1}}/>
+{rpFiles.length<3&&<label style={{padding:"6px 10px",borderRadius:6,background:"#F5F5F5",border:"1px solid #DDD",cursor:"pointer",fontSize:"0.78rem",display:"flex",alignItems:"center"}}>📎<input type="file" accept="image/*,.pdf,.doc,.docx" onChange={e=>{const f=e.target.files[0];if(f&&rpFiles.length<3)setRPFiles(p=>[...p,f]);e.target.value="";}} style={{display:"none"}}/></label>}
+<button onClick={()=>{if(rp.trim()){onReply(rp,rpFiles);setRP("");setRPFiles([]);}}} style={B(pr.color,"white",{})}>📤</button></div></div>}
 </div>);}
 
 // ═══ USER MANAGEMENT ═══
