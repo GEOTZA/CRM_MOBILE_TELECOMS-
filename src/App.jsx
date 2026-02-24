@@ -1,5 +1,16 @@
 import { useState, useEffect, useRef } from "react";
 
+
+/* ═══ SHEETJS XLSX EXPORT ═══ */
+const loadXLSX=()=>new Promise((res,rej)=>{
+  if(window.XLSX)return res(window.XLSX);
+  const s=document.createElement("script");
+  s.src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+  s.onload=()=>res(window.XLSX);
+  s.onerror=()=>rej(new Error("Failed to load SheetJS"));
+  document.head.appendChild(s);
+});
+
 /* ═══ SUPABASE CONFIG ═══
    Set USE_SUPA=true and fill in your project URL + anon key to connect.
    Run the SQL below in Supabase SQL Editor to create tables. */
@@ -70,10 +81,10 @@ const ST = {
 const ROLES = { admin:{l:"Admin",c:"#E91E63",i:"👑"}, director:{l:"Director",c:"#9C27B0",i:"🎯"}, supervisor:{l:"Supervisor",c:"#2196F3",i:"📋"}, backoffice:{l:"BackOffice",c:"#FF9800",i:"🏢"}, partner:{l:"Partner",c:"#4CAF50",i:"🤝"}, agent:{l:"Agent",c:"#607D8B",i:"👤"} };
 
 const PERMS = {
-  admin:{create:1,edit:1,del:1,viewAll:1,users:1,delUsers:1,pause:1,fields:1,exp:1,tickets:1,status:1,comment:1,adminPanel:1},
-  director:{create:0,edit:1,del:1,viewAll:1,users:1,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,needsCode:1},
+  admin:{create:1,edit:1,del:1,viewAll:1,users:1,delUsers:1,pause:1,fields:1,exp:1,tickets:1,status:1,comment:1,adminPanel:1,reports:1},
+  director:{create:0,edit:1,del:1,viewAll:1,users:1,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,needsCode:1,reports:1},
   supervisor:{create:0,edit:1,del:0,viewAll:1,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1},
-  backoffice:{create:0,edit:1,del:0,viewAll:1,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1},
+  backoffice:{create:0,edit:1,del:0,viewAll:1,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,reports:1},
   partner:{create:1,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownAgents:1},
   agent:{create:1,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownOnly:1},
 };
@@ -131,7 +142,38 @@ const expPDF=(r,prov)=>{const p=PROVIDERS[prov],s=ST[r.status]||{l:"—",c:"#999
 
 const expA5=(r,prov)=>{const p=PROVIDERS[prov];const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Courier ${r.id}</title><style>*{margin:0;padding:0;box-sizing:border-box}@page{size:A5;margin:10mm}body{font-family:Arial,sans-serif;width:148mm;padding:10mm;margin:auto}.h{background:${p.color};color:#fff;padding:8px 12px;border-radius:5px;margin-bottom:10px;display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem}.b{border:1.5px solid #333;border-radius:4px;padding:8px;margin-bottom:7px}.bt{font-weight:700;font-size:0.78rem;margin-bottom:5px;color:${p.color}}.r{display:flex;gap:6px;margin-bottom:2px;font-size:0.8rem}.lb{color:#666;font-weight:600;min-width:70px}.big{font-size:0.95rem;font-weight:700}</style></head><body><div class="h"><span>${p.icon} COURIER — ${p.name}</span><span>${r.id}</span></div><div class="b"><div class="bt">📦 Παραλήπτης</div><div class="r"><span class="lb">Ονομ:</span><span class="big">${r.ln} ${r.fn}</span></div><div class="r"><span class="lb">Κιν:</span><span class="big">${r.mob}</span></div><div class="r"><span class="lb">Τηλ:</span><span>${r.ph}</span></div></div><div class="b"><div class="bt">📍 Αποστολή</div><div class="r"><span class="lb">Διεύθ:</span><span class="big">${r.cAddr}</span></div><div class="r"><span class="lb">Πόλη:</span><span>${r.cCity}</span></div><div class="r"><span class="lb">ΤΚ:</span><span class="big">${r.cTk}</span></div></div><div class="b"><div class="bt">🚚 Στοιχεία</div><div class="r"><span class="lb">Courier:</span><span>${r.cour}</span></div><div class="r"><span class="lb">Πρόγρ:</span><span>${r.prog}</span></div></div><script>window.onload=()=>window.print()</script></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();};
 
-const expCSV=data=>{const h=["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Υπηρεσία","Κατάσταση","Partner","Agent","Ημ/νία","Τιμή"];const rows=data.map(r=>[r.id,PROVIDERS[r.prov]?.name,r.ln,r.fn,r.afm,r.mob,r.prog,r.svc,ST[r.status]?.l,r.partner,r.agentName,r.created,r.price]);const csv="\uFEFF"+[h.join(","),...rows.map(r=>r.map(c=>`"${c||""}"`).join(","))].join("\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));a.download=`CRM_${new Date().toISOString().slice(0,10)}.csv`;a.click();};
+const expXLSX=async(data,filename,sheetName)=>{
+  try{
+    const XLSX=await loadXLSX();
+    const h=["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Υπηρεσία","Κατάσταση","Partner","Agent","Ημ/νία","Πάγιο €","Γραμμές Κιν.","Γραμμές Σταθ.","Επιδότηση €"];
+    const rows=data.map(r=>{
+      const lns=r.lines||[];
+      const mobLns=lns.filter(l=>l.type==="mobile");
+      const landLns=lns.filter(l=>l.type==="landline");
+      const subTotal=lns.filter(l=>l.mode==="subsidy").reduce((s,l)=>s+(parseFloat(l.subsidy)||0),0);
+      return[r.id,PROVIDERS[r.prov]?.name||"",r.ln,r.fn,r.afm,r.mob,r.prog||lns.map(l=>l.prog).join(", "),r.svc||lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "),ST[r.status]?.l||"",r.partner,r.agentName,r.created,parseFloat(r.price)||0,mobLns.length,landLns.length,subTotal];
+    });
+    const ws=XLSX.utils.aoa_to_sheet([h,...rows]);
+    // Auto-width columns
+    const colW=h.map((h,i)=>({wch:Math.max(h.length,12,...rows.map(r=>String(r[i]||"").length))}));
+    ws["!cols"]=colW;
+    // Style header row (bold)
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,sheetName||"Αιτήσεις");
+    XLSX.writeFile(wb,filename||`CRM_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }catch(e){console.error("Excel export error:",e);alert("Σφάλμα εξαγωγής Excel");}
+};
+
+const expReport=async(title,headers,rows,filename)=>{
+  try{
+    const XLSX=await loadXLSX();
+    const ws=XLSX.utils.aoa_to_sheet([headers,...rows]);
+    ws["!cols"]=headers.map((h,i)=>({wch:Math.max(h.length+2,...rows.map(r=>String(r[i]||"").length+2))}));
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,title.substring(0,31));
+    XLSX.writeFile(wb,filename||`Report_${new Date().toISOString().slice(0,10)}.xlsx`);
+  }catch(e){console.error("Report export error:",e);alert("Σφάλμα εξαγωγής");}
+};
 
 // ═══ MAIN APP ═══
 export default function App(){
@@ -234,7 +276,9 @@ const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.nam
 const saveReq=async(f)=>{
   const id=f.id||`REQ-${String(reqs.length+1).padStart(5,"0")}`;
   const lns=f.lines||[];
-  const nr={...f,id,prov:f.prov||prov,agentId:f.agentId||cu.id,agentName:f.agentName||cu.name,partner:f.partner||cu.partner||"",created:f.created||ts(),comments:f.comments||[],
+  // When editing, preserve original agent from existing request
+  const existingReq=f.id?reqs.find(r=>r.id===f.id):null;
+  const nr={...f,id,prov:f.prov||existingReq?.prov||prov,agentId:existingReq?.agentId||f.agentId||cu.id,agentName:existingReq?.agentName||f.agentName||cu.name,partner:f.partner||existingReq?.partner||cu.partner||"",created:f.created||existingReq?.created||ts(),comments:existingReq?.comments||f.comments||[],
     prog:lns.length>0?lns.map(l=>l.prog).filter(Boolean).join(", "):(f.prog||""),
     svc:lns.length>0?lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "):(f.svc||""),
     price:lns.length>0?String(lns.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)):(f.price||"")
@@ -311,7 +355,7 @@ return(
 
 {/* MAIN TABS */}
 <div style={{display:"flex",background:"white",borderBottom:"2px solid #E8E8E8",padding:"0 20px",overflowX:"auto"}}>
-{[["dash","📊 Αιτήσεις"],["tix","🎫 Αιτήματα"],P.users&&["users","👥 Χρήστες"],P.adminPanel&&["admin","👑 Admin Panel"]].filter(Boolean).map(([k,l])=>
+{[["dash","📊 Αιτήσεις"],["tix","🎫 Αιτήματα"],P.reports&&["reports","📊 Reports"],P.users&&["users","👥 Χρήστες"],P.adminPanel&&["admin","👑 Admin Panel"]].filter(Boolean).map(([k,l])=>
 <div key={k} onClick={()=>{setTab(k);setVM("list");setSelTix(null);}} style={{padding:"11px 18px",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.82rem",color:tab===k?pr.color:"#888",borderBottom:`3px solid ${tab===k?pr.color:"transparent"}`,whiteSpace:"nowrap"}}>{l}</div>
 )}
 </div>
@@ -324,7 +368,7 @@ return(
 <div><h1 style={{fontFamily:"'Outfit'",fontSize:"1.8rem",fontWeight:900,letterSpacing:-1}}>{pr.name}</h1><p style={{color:"#888",fontSize:"0.82rem"}}>{rl.i} {rl.l}</p></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
 {(cu.role==="admin"||cu.cc&&P.create)?<button onClick={()=>setVM("form")} style={B(pr.grad,"white",{padding:"9px 20px"})}>➕ Νέα Αίτηση</button>:null}
-{P.exp?<button onClick={()=>expCSV(fr)} style={B("#FFF","#333",{border:"1px solid #DDD",padding:"9px 16px"})}>📊 Excel</button>:null}
+{P.exp?<button onClick={()=>expXLSX(fr)} style={B("#FFF","#333",{border:"1px solid #DDD",padding:"9px 16px"})}>📊 Excel</button>:null}
 </div></div>
 
 {/* Stats */}
@@ -372,6 +416,9 @@ return(
 
 {/* FIELDS */}
 {tab==="fields"&&P.fields&&<FieldMgmt pr={pr}/>}
+
+{/* ═══ REPORTS ═══ */}
+{tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport}/>}
 
 {/* SYSTEM */}
 
@@ -852,6 +899,129 @@ return(<div>
 // ═══════════════════════════════════════════════════════════
 
 // ═══ ADMIN PANEL — All hooks at top level ═══
+// ═══ REPORTS PANEL ═══
+function ReportsPanel({reqs,users,pr,prov,PROVIDERS,ST,expReport}){
+const[rTab,setRTab]=useState("overview");const[rProv,setRProv]=useState("all");
+const allReqs=rProv==="all"?reqs:reqs.filter(r=>r.prov===rProv);
+const activeReqs=allReqs.filter(r=>r.status==="active"||r.status==="credited");
+
+// ─── AGGREGATIONS ───
+const byProvider=Object.entries(PROVIDERS).map(([k,p])=>{
+  const pr=reqs.filter(r=>r.prov===k);const act=pr.filter(r=>r.status==="active"||r.status==="credited");
+  const rev=act.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
+  const lns=act.flatMap(r=>r.lines||[]);
+  return{key:k,name:p.name,icon:p.icon,color:p.color,total:pr.length,active:act.length,revenue:rev,mobLines:lns.filter(l=>l.type==="mobile").length,landLines:lns.filter(l=>l.type==="landline").length};
+});
+
+const byAgent=()=>{const m={};allReqs.forEach(r=>{const k=r.agentName||"Άγνωστος";if(!m[k])m[k]={name:k,agentId:r.agentId,total:0,active:0,revenue:0,mob:0,land:0,sub:0};m[k].total++;if(r.status==="active"||r.status==="credited"){m[k].active++;m[k].revenue+=(parseFloat(r.price)||0);(r.lines||[]).forEach(l=>{if(l.type==="mobile")m[k].mob++;else m[k].land++;if(l.mode==="subsidy")m[k].sub+=(parseFloat(l.subsidy)||0);});}});return Object.values(m).sort((a,b)=>b.revenue-a.revenue);};
+
+const byPartner=()=>{const m={};allReqs.forEach(r=>{const k=r.partner||"—";if(!m[k])m[k]={name:k,total:0,active:0,revenue:0,agents:new Set()};m[k].total++;m[k].agents.add(r.agentName);if(r.status==="active"||r.status==="credited"){m[k].active++;m[k].revenue+=(parseFloat(r.price)||0);}});return Object.values(m).map(p=>({...p,agents:p.agents.size})).sort((a,b)=>b.revenue-a.revenue);};
+
+const byProgram=()=>{const m={};allReqs.forEach(r=>{const lns=r.lines||[];if(lns.length>0){lns.forEach(l=>{const k=l.prog||"—";if(!m[k])m[k]={name:k,type:l.type,total:0,revenue:0,simo:0,subsidy:0,subAmt:0};m[k].total++;m[k].revenue+=(parseFloat(l.price)||0);if(l.mode==="simo")m[k].simo++;else{m[k].subsidy++;m[k].subAmt+=(parseFloat(l.subsidy)||0);}});}else{const k=r.prog||"—";if(!m[k])m[k]={name:k,type:"—",total:0,revenue:0,simo:0,subsidy:0,subAmt:0};m[k].total++;m[k].revenue+=(parseFloat(r.price)||0);}});return Object.values(m).sort((a,b)=>b.revenue-a.revenue);};
+
+const byStatus=()=>{const m={};allReqs.forEach(r=>{const s=ST[r.status]||{l:"—"};const k=r.status;if(!m[k])m[k]={key:k,label:s.l,icon:s.i,color:s.c,bg:s.bg,total:0,revenue:0};m[k].total++;m[k].revenue+=(parseFloat(r.price)||0);});return Object.values(m).sort((a,b)=>b.total-a.total);};
+
+const totalRev=activeReqs.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
+const totalLines=activeReqs.flatMap(r=>r.lines||[]);
+const totalMob=totalLines.filter(l=>l.type==="mobile").length;
+const totalLand=totalLines.filter(l=>l.type==="landline").length;
+const totalSub=totalLines.filter(l=>l.mode==="subsidy").reduce((s,l)=>s+(parseFloat(l.subsidy)||0),0);
+
+const cardS={textAlign:"center",padding:14,borderRadius:10,background:"white",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"};
+const thS={padding:"8px 10px",textAlign:"left",fontSize:"0.72rem",fontWeight:700,color:"#666",borderBottom:"2px solid #E0E0E0",whiteSpace:"nowrap"};
+const tdS={padding:"8px 10px",fontSize:"0.78rem",borderBottom:"1px solid #F0F0F0"};
+
+return(
+<div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10,marginBottom:16}}>
+<div><h1 style={{fontFamily:"'Outfit'",fontSize:"1.8rem",fontWeight:900,letterSpacing:-1}}>📊 Reports</h1></div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+<select value={rProv} onChange={e=>setRProv(e.target.value)} style={{padding:"6px 12px",borderRadius:6,border:"1px solid #DDD",fontSize:"0.8rem",fontWeight:600}}>
+<option value="all">Όλοι οι πάροχοι</option>
+{Object.entries(PROVIDERS).map(([k,p])=><option key={k} value={k}>{p.icon} {p.name}</option>)}
+</select>
+</div></div>
+
+{/* Report Tabs */}
+<div style={{display:"flex",gap:4,marginBottom:16,flexWrap:"wrap"}}>
+{[["overview","📊 Επισκόπηση"],["provider","🏢 Ανά Πάροχο"],["program","📱 Ανά Πρόγραμμα"],["agent","👤 Ανά Agent"],["partner","🤝 Ανά Partner"],["status","📋 Ανά Κατάσταση"]].map(([k,l])=>
+<button key={k} onClick={()=>setRTab(k)} style={{padding:"7px 16px",borderRadius:8,border:"none",background:rTab===k?pr.color:"#E8E8E8",color:rTab===k?"white":"#666",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>{l}</button>)}
+</div>
+
+{/* ─── OVERVIEW ─── */}
+{rTab==="overview"&&<div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10,marginBottom:20}}>
+<div style={{...cardS,borderTop:`4px solid ${pr.color}`}}><div style={{fontSize:"0.7rem",color:"#888"}}>Συνολικές Αιτήσεις</div><div style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:800,color:pr.color}}>{allReqs.length}</div></div>
+<div style={{...cardS,borderTop:"4px solid #4CAF50"}}><div style={{fontSize:"0.7rem",color:"#888"}}>Ενεργές</div><div style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:800,color:"#4CAF50"}}>{activeReqs.length}</div></div>
+<div style={{...cardS,borderTop:"4px solid #2196F3"}}><div style={{fontSize:"0.7rem",color:"#888"}}>Πάγιο €</div><div style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:800,color:"#2196F3"}}>€{totalRev.toFixed(2)}</div></div>
+<div style={{...cardS,borderTop:"4px solid #FF9800"}}><div style={{fontSize:"0.7rem",color:"#888"}}>Γραμμές Κινητής</div><div style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:800,color:"#FF9800"}}>{totalMob}</div></div>
+<div style={{...cardS,borderTop:"4px solid #9C27B0"}}><div style={{fontSize:"0.7rem",color:"#888"}}>Γραμμές Σταθερής</div><div style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:800,color:"#9C27B0"}}>{totalLand}</div></div>
+<div style={{...cardS,borderTop:"4px solid #E91E63"}}><div style={{fontSize:"0.7rem",color:"#888"}}>Επιδοτήσεις €</div><div style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:800,color:"#E91E63"}}>€{totalSub.toFixed(2)}</div></div>
+</div>
+</div>}
+
+{/* ─── BY PROVIDER ─── */}
+{rTab==="provider"&&<div>
+<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+<button onClick={()=>expReport("Ανά Πάροχο",["Πάροχος","Αιτήσεις","Ενεργές","Πάγιο €","Κινητές","Σταθερές"],byProvider.map(p=>[p.name,p.total,p.active,p.revenue.toFixed(2),p.mobLines,p.landLines]),"Report_Provider.xlsx")} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
+{["Πάροχος","Αιτήσεις","Ενεργές","Πάγιο €","Κινητές","Σταθερές"].map(h=><th key={h} style={thS}>{h}</th>)}
+</tr></thead><tbody>
+{byProvider.map(p=><tr key={p.key}><td style={{...tdS,fontWeight:700}}><span style={{color:p.color}}>{p.icon}</span> {p.name}</td><td style={tdS}>{p.total}</td><td style={tdS}>{p.active}</td><td style={{...tdS,fontWeight:700,color:"#2E7D32"}}>€{p.revenue.toFixed(2)}</td><td style={tdS}>{p.mobLines}</td><td style={tdS}>{p.landLines}</td></tr>)}
+</tbody></table></div></div>}
+
+{/* ─── BY PROGRAM ─── */}
+{rTab==="program"&&<div>
+<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+<button onClick={()=>{const d=byProgram();expReport("Ανά Πρόγραμμα",["Πρόγραμμα","Τύπος","Γραμμές","Πάγιο €","SIM Only","Επιδότηση","Ποσό Επιδ. €"],d.map(p=>[p.name,p.type==="mobile"?"Κινητή":"Σταθερή",p.total,p.revenue.toFixed(2),p.simo,p.subsidy,p.subAmt.toFixed(2)]),"Report_Program.xlsx");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
+{["Πρόγραμμα","Τύπος","Γραμμές","Πάγιο €","SIM Only","Επιδότηση","Ποσό Επιδ. €"].map(h=><th key={h} style={thS}>{h}</th>)}
+</tr></thead><tbody>
+{byProgram().map((p,i)=><tr key={i}><td style={{...tdS,fontWeight:700}}>{p.name}</td><td style={tdS}><span style={{padding:"2px 8px",borderRadius:4,fontSize:"0.68rem",fontWeight:600,background:p.type==="mobile"?"#E3F2FD":"#FFF3E0",color:p.type==="mobile"?"#1565C0":"#E65100"}}>{p.type==="mobile"?"📱 Κινητή":"📞 Σταθερή"}</span></td><td style={tdS}>{p.total}</td><td style={{...tdS,fontWeight:700,color:"#2E7D32"}}>€{p.revenue.toFixed(2)}</td><td style={tdS}>{p.simo}</td><td style={tdS}>{p.subsidy}</td><td style={{...tdS,color:"#AD1457"}}>€{p.subAmt.toFixed(2)}</td></tr>)}
+</tbody></table></div></div>}
+
+{/* ─── BY AGENT ─── */}
+{rTab==="agent"&&<div>
+<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+<button onClick={()=>{const d=byAgent();expReport("Ανά Agent",["Agent","Αιτήσεις","Ενεργές","Πάγιο €","Κινητές","Σταθερές","Επιδοτήσεις €"],d.map(a=>[a.name,a.total,a.active,a.revenue.toFixed(2),a.mob,a.land,a.sub.toFixed(2)]),"Report_Agent.xlsx");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
+{["Agent","Αιτήσεις","Ενεργές","Πάγιο €","Κινητές","Σταθερές","Επιδοτήσεις €"].map(h=><th key={h} style={thS}>{h}</th>)}
+</tr></thead><tbody>
+{byAgent().map((a,i)=><tr key={i}><td style={{...tdS,fontWeight:700}}>{a.name}</td><td style={tdS}>{a.total}</td><td style={tdS}>{a.active}</td><td style={{...tdS,fontWeight:700,color:"#2E7D32"}}>€{a.revenue.toFixed(2)}</td><td style={tdS}>{a.mob}</td><td style={tdS}>{a.land}</td><td style={{...tdS,color:"#AD1457"}}>€{a.sub.toFixed(2)}</td></tr>)}
+</tbody></table></div></div>}
+
+{/* ─── BY PARTNER ─── */}
+{rTab==="partner"&&<div>
+<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+<button onClick={()=>{const d=byPartner();expReport("Ανά Partner",["Partner","Agents","Αιτήσεις","Ενεργές","Πάγιο €"],d.map(p=>[p.name,p.agents,p.total,p.active,p.revenue.toFixed(2)]),"Report_Partner.xlsx");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
+{["Partner","Agents","Αιτήσεις","Ενεργές","Πάγιο €"].map(h=><th key={h} style={thS}>{h}</th>)}
+</tr></thead><tbody>
+{byPartner().map((p,i)=><tr key={i}><td style={{...tdS,fontWeight:700}}>{p.name}</td><td style={tdS}>{p.agents}</td><td style={tdS}>{p.total}</td><td style={tdS}>{p.active}</td><td style={{...tdS,fontWeight:700,color:"#2E7D32"}}>€{p.revenue.toFixed(2)}</td></tr>)}
+</tbody></table></div></div>}
+
+{/* ─── BY STATUS ─── */}
+{rTab==="status"&&<div>
+<div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+<button onClick={()=>{const d=byStatus();expReport("Ανά Κατάσταση",["Κατάσταση","Αιτήσεις","Πάγιο €"],d.map(s=>[s.label,s.total,s.revenue.toFixed(2)]),"Report_Status.xlsx");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"hidden",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr>
+{["Κατάσταση","Αιτήσεις","Πάγιο €"].map(h=><th key={h} style={thS}>{h}</th>)}
+</tr></thead><tbody>
+{byStatus().map((s,i)=><tr key={i}><td style={tdS}><span style={{padding:"3px 10px",borderRadius:6,fontSize:"0.75rem",fontWeight:700,background:s.bg,color:s.color}}>{s.icon} {s.label}</span></td><td style={tdS}>{s.total}</td><td style={{...tdS,fontWeight:700,color:"#2E7D32"}}>€{s.revenue.toFixed(2)}</td></tr>)}
+</tbody></table></div></div>}
+
+</div>);}
+
 function AdminPanel({users,setUsers,reqs,setReqs,afmDb,setAfmDb,cu,pr,sysPaused,setSysPaused}){
 // ALL hooks at top — never inside conditions
 const[sec,setSec]=useState("ov");
