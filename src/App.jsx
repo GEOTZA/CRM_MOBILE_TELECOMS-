@@ -11,6 +11,20 @@ const loadXLSX=()=>new Promise((res,rej)=>{
   document.head.appendChild(s);
 });
 
+
+const downloadDoc=async(path,name)=>{
+  try{
+    const res=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+    if(!res.ok)throw new Error("Download failed");
+    const blob=await res.blob();
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=name||"document";a.target="_blank";
+    // If PDF or image, open in new tab instead of download
+    if(blob.type.startsWith("image/")||blob.type==="application/pdf"){window.open(url,"_blank");}
+    else{document.body.appendChild(a);a.click();document.body.removeChild(a);}
+  }catch(e){console.error("Download error:",e);alert("Σφάλμα λήψης αρχείου");}
+};
+
 /* ═══ SUPABASE CONFIG ═══
    Set USE_SUPA=true and fill in your project URL + anon key to connect.
    Run the SQL below in Supabase SQL Editor to create tables. */
@@ -843,7 +857,7 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📎 Δικαιολογητικά ({docs.length})</div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
 {docs.map((d,i)=>{const labels={id:"🪪 Ταυτότητα",provider_bill:"📄 Λογ.Παρόχου",address_proof:"🏠 Αποδ.Διεύθυνσης",bank_proof:"🏦 Αποδ.Λογαριασμού",business_proof:"💼 Επαγγ.Ιδιότητα",other:"📁 Λοιπά"};
-return <a key={i} href={`${SUPA_URL}/storage/v1/object/authenticated/documents/${d.path}`} target="_blank" rel="noreferrer" style={{padding:"6px 12px",borderRadius:6,background:"white",border:"1px solid #E0E0E0",fontSize:"0.76rem",fontWeight:600,color:"#1565C0",textDecoration:"none",display:"inline-flex",alignItems:"center",gap:4}}>{labels[d.type]||d.type} <span style={{fontSize:"0.65rem",color:"#888"}}>{d.name}</span></a>;})}
+return <button key={i} onClick={()=>downloadDoc(d.path,d.name)} style={{padding:"6px 12px",borderRadius:6,background:"white",border:"1px solid #E0E0E0",fontSize:"0.76rem",fontWeight:600,color:"#1565C0",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}>{labels[d.type]||d.type} <span style={{fontSize:"0.65rem",color:"#888"}}>{d.name}</span></button>;})}
 </div>
 <div style={{fontSize:"0.65rem",color:"#999",marginTop:6}}>* Τα αρχεία διατηρούνται για 60 ημέρες</div>
 </div>:null;})()}
@@ -984,7 +998,7 @@ return(
 <span style={{fontSize:"0.7rem",color:"#999"}}>{m.ts}</span></div>
 <p style={{fontSize:"0.84rem"}}>{m.text}</p>
 {m.attachments&&m.attachments.length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
-{m.attachments.map((a,j)=><a key={j} href={`${SUPA_URL}/storage/v1/object/authenticated/documents/${a.path}`} target="_blank" rel="noreferrer" style={{padding:"3px 8px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.68rem",fontWeight:600,textDecoration:"none"}}>📎 {a.name}</a>)}
+{m.attachments.map((a,j)=><button key={j} onClick={()=>downloadDoc(a.path,a.name)} style={{padding:"3px 8px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.68rem",fontWeight:600,border:"none",cursor:"pointer"}}>📎 {a.name}</button>)}
 </div>}
 </div>))}
 </div>
