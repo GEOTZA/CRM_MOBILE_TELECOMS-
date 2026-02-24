@@ -14,32 +14,41 @@ const loadXLSX=()=>new Promise((res,rej)=>{
 
 const downloadDoc=async(path,name)=>{
   try{
-    console.log("📥 Download:",path);
-    const signRes=await fetch(`${SUPA_URL}/storage/v1/object/sign/documents/${path}`,{
-      method:"POST",
-      headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},
-      body:JSON.stringify({expiresIn:3600})
+    console.log("📥 Downloading:",path);
+    // Use Supabase Storage authenticated endpoint
+    const res=await fetch(`${SUPA_URL}/storage/v1/object/authenticated/documents/${path}`,{
+      headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}
     });
-    const data=await signRes.json();
-    console.log("📥 Sign response:",signRes.status,data);
-    if(!signRes.ok){
-      // Fallback: try direct download with auth
-      console.log("📥 Trying direct download...");
-      const directRes=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{
-        headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}
-      });
-      if(directRes.ok){
-        const blob=await directRes.blob();
-        const url=URL.createObjectURL(blob);
-        window.open(url,"_blank");
-        return;
-      }
-      throw new Error("Status: "+signRes.status+" - "+JSON.stringify(data));
+    console.log("📥 Auth response:",res.status);
+    if(res.ok){
+      const blob=await res.blob();
+      const url=URL.createObjectURL(blob);
+      if(blob.type.startsWith("image/")||blob.type==="application/pdf"){window.open(url,"_blank");}
+      else{const a=document.createElement("a");a.href=url;a.download=name||"document";document.body.appendChild(a);a.click();document.body.removeChild(a);}
+      return;
     }
-    const signedUrl=data.signedURL||data.signedUrl;
-    if(signedUrl){window.open(`${SUPA_URL}${signedUrl}`,"_blank");}
-    else{throw new Error("No signed URL in response");}
-  }catch(e){console.error("Download error:",e);alert("Σφάλμα λήψης: "+e.message);}
+    // Fallback: try public endpoint
+    console.log("📥 Trying public...");
+    const pub=await fetch(`${SUPA_URL}/storage/v1/object/public/documents/${path}`);
+    if(pub.ok){
+      const blob=await pub.blob();
+      const url=URL.createObjectURL(blob);
+      window.open(url,"_blank");
+      return;
+    }
+    // Fallback 2: render endpoint  
+    console.log("📥 Trying render...");
+    const render=await fetch(`${SUPA_URL}/storage/v1/render/image/authenticated/documents/${path}`,{
+      headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}
+    });
+    if(render.ok){
+      const blob=await render.blob();
+      window.open(URL.createObjectURL(blob),"_blank");
+      return;
+    }
+    const errText=await res.text();
+    throw new Error(res.status+": "+errText);
+  }catch(e){console.error("📥 Download error:",e);alert("Σφάλμα λήψης: "+e.message);}
 };
 
 /* ═══ SUPABASE CONFIG ═══
@@ -329,7 +338,7 @@ const saveReq=async(f)=>{
           if(doc.file&&doc.type){
             try{
               const ext=doc.name.split(".").pop()||"bin";
-              const path=`${nr.id}/${Date.now()}_${doc.type}.${ext}`;
+              const path=`${nr.id}/${Date.now()}.${ext}`;
               await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":doc.file.type},body:doc.file});
               docMeta.push({type:doc.type,name:doc.name,path,uploaded:new Date().toISOString()});
             }catch(e){console.error("Doc upload error:",e);}
@@ -574,7 +583,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
   const attachments=[];
   if(t.files&&t.files.length>0){
     for(const f of t.files){
-      if(f){try{const ext=f.name.split(".").pop()||"bin";const path=`tickets/${tkId}/${Date.now()}_${ext}`;if(USE_SUPA)await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type},body:f});attachments.push({name:f.name,path});}catch(e){console.error("File upload error:",e);}}
+      if(f){try{const ext=f.name.split(".").pop()||"bin";const path=`tickets/${tkId}/${Date.now()}.${ext}`;if(USE_SUPA)await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type},body:f});attachments.push({name:f.name,path});}catch(e){console.error("File upload error:",e);}}
     }
   }
   const nt={...t,id:tkId,by:cu.id,byName:cu.name,byRole:cu.role,at:ts(),status:"open",msgs:[{uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:ts(),attachments}]};setTix(p=>[nt,...p]);users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason} — ${t.cname}`));if(t.agentId&&t.agentId!==cu.id)addN(t.agentId,`🎫 Αίτημα ${tkId}: ${t.reason}`);}}/>}
@@ -585,7 +594,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
     for(const f of files){
       try{
         const ext=f.name.split(".").pop()||"bin";
-        const path=`tickets/${selTix.id}/${Date.now()}_${ext}`;
+        const path=`tickets/${selTix.id}/${Date.now()}.${ext}`;
         if(USE_SUPA)await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type},body:f});
         attachments.push({name:f.name,path});
       }catch(e){console.error("File upload error:",e);}
