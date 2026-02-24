@@ -14,15 +14,18 @@ const loadXLSX=()=>new Promise((res,rej)=>{
 
 const downloadDoc=async(path,name)=>{
   try{
-    const res=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
-    if(!res.ok)throw new Error("Download failed");
-    const blob=await res.blob();
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement("a");a.href=url;a.download=name||"document";a.target="_blank";
-    // If PDF or image, open in new tab instead of download
-    if(blob.type.startsWith("image/")||blob.type==="application/pdf"){window.open(url,"_blank");}
-    else{document.body.appendChild(a);a.click();document.body.removeChild(a);}
-  }catch(e){console.error("Download error:",e);alert("Σφάλμα λήψης αρχείου");}
+    // Secure: Use signed URL (expires in 1 hour, private bucket)
+    const signRes=await fetch(`${SUPA_URL}/storage/v1/object/sign/documents/${path}`,{
+      method:"POST",
+      headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({expiresIn:3600})
+    });
+    if(!signRes.ok)throw new Error("Sign URL failed: "+signRes.status);
+    const data=await signRes.json();
+    const signedUrl=data.signedURL||data.signedUrl;
+    if(!signedUrl)throw new Error("No signed URL returned");
+    window.open(`${SUPA_URL}${signedUrl}`,"_blank");
+  }catch(e){console.error("Download error:",e);alert("Σφάλμα λήψης αρχείου: "+e.message);}
 };
 
 /* ═══ SUPABASE CONFIG ═══
