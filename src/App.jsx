@@ -451,7 +451,7 @@ return(
 
 {[["dash","📊","Αιτήσεις",true],
 ["search","🔍","Αναζήτηση",true],
-["tix","🎫","Αιτήματα",true],
+["tix","🎫","Αιτήματα",!cu?.tixOff],
 ["reports","📈","Reports",P.reports],
 ["users","👥","Χρήστες",P.users],
 ["admin","👑","Admin",P.adminPanel]
@@ -598,8 +598,8 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
   const firstMsg={uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:now,attachments};
   const nt={...ticketData,id:tkId,by:cu.id,byName:cu.name,byRole:cu.role,at:now,status:"open",msgs:[firstMsg]};
   setTix(p=>[nt,...p]);
-  users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason} — ${t.cname}`));
-  if(t.agentId&&t.agentId!==cu.id)addN(t.agentId,`🎫 Αίτημα ${tkId}: ${t.reason}`);
+  users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα ${tkId}: ${t.reason} — ${t.cname}`));
+  if(t.agentId&&t.agentId!==cu.id)addN(t.agentId,`🎫 Αίτημα ${tkId}: ${t.reason} — Πελάτης: ${t.cname}`);
   // Save to Supabase
   if(USE_SUPA){
     try{
@@ -624,9 +624,11 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
       }catch(e){console.error("File upload error:",e);}
     }
   }
-  const now=ts();const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:now,attachments};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση ${selTix.id}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση ${selTix.id}`));
+  const now=ts();const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:now,attachments};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση αιτήματος ${selTix.id} από ${cu.name}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση αιτήματος ${selTix.id} από ${cu.name}`));
   // Save message to Supabase
   if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/ticket_messages`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({ticket_id:selTix.id,uid:cu.id,uname:cu.name,role:cu.role,text:txt,attachments:JSON.stringify(attachments),created_at:now})});console.log("✅ Reply saved");}catch(e){console.error("Reply save error:",e);}}
+}} onDelete={async()=>{if(!confirm("Διαγραφή αιτήματος "+selTix.id+";")){return;}setTix(p=>p.filter(t=>t.id!==selTix.id));setSelTix(null);
+  if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/ticket_messages?ticket_id=eq.${selTix.id}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});await fetch(`${SUPA_URL}/rest/v1/tickets?id=eq.${selTix.id}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});auditLog(cu.id,"delete","tickets",selTix.id,{});console.log("✅ Ticket deleted");}catch(e){console.error("Delete error:",e);}}
 }} onClose={async()=>{setTix(p=>p.map(t=>t.id===selTix.id?{...t,status:"closed"}:t));setSelTix(p=>({...p,status:"closed"}));
   if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/tickets?id=eq.${selTix.id}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({status:"closed"})});console.log("✅ Ticket closed in DB");}catch(e){console.error("Close error:",e);}}
 }}/>}
@@ -937,7 +939,8 @@ return <button key={i} onClick={()=>downloadDoc(d.path,d.name)} style={{padding:
 {/* Signature */}
 <div style={{padding:"12px 20px",background:"#F3E5F5"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>✍️ Υπογραφή</div>
-{r.sig?<img src={r.sig} style={{maxWidth:260,maxHeight:100,border:"1px solid #DDD",borderRadius:6,padding:4}} alt="sig"/>:<p style={{color:"#999"}}>—</p>}
+{r.sig?<div><img src={r.sig} style={{maxWidth:260,maxHeight:100,border:"1px solid #DDD",borderRadius:6,padding:4}} alt="sig"/>
+<button onClick={()=>{const a=document.createElement("a");a.href=r.sig;a.download=`Υπογραφή_${r.id}.png`;document.body.appendChild(a);a.click();document.body.removeChild(a);}} style={{display:"block",marginTop:4,padding:"4px 12px",borderRadius:4,border:"1px solid #DDD",background:"#F5F5F5",color:"#333",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>📥 Λήψη υπογραφής PNG</button></div>:<p style={{color:"#999"}}>—</p>}
 </div></div>);}
 
 // ═══ TICKETS ═══
@@ -1031,7 +1034,7 @@ return(<div>
 {!vis.length&&<tr><td colSpan={8} style={{textAlign:"center",padding:24,color:"#999"}}>Δεν υπάρχουν αιτήματα</td></tr>}
 </tbody></table></div></div>);}
 
-function TixDetail({t,cu,pr,onBack,onReply,onClose}){
+function TixDetail({t,cu,pr,onBack,onReply,onClose,onDelete}){
 const[rp,setRP]=useState("");const[rpFiles,setRPFiles]=useState([]);
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
@@ -1040,6 +1043,7 @@ return(
 <div style={{display:"flex",gap:5}}>
 <span style={bg(t.status==="open"?"#E8F5E9":"#F5F5F5",t.status==="open"?"#2E7D32":"#999")}>{t.status==="open"?"🟢 Ανοικτό":"⚫ Κλειστό"}</span>
 {t.status==="open"&&(cu.role==="backoffice"||cu.role==="supervisor"||cu.role==="admin")&&<button onClick={onClose} style={B("rgba(255,255,255,0.2)","white",{})}>🔒 Κλείσιμο</button>}
+{cu.role==="admin"&&<button onClick={onDelete} style={B("rgba(255,0,0,0.3)","white",{})}>🗑 Διαγραφή</button>}
 <button onClick={onBack} style={B("rgba(255,255,255,0.2)","white",{})}>← Πίσω</button></div></div>
 
 <div style={{padding:"10px 20px",background:"#F5F5F5",borderBottom:"1px solid #E8E8E8",display:"flex",gap:16,fontSize:"0.8rem",flexWrap:"wrap"}}>
@@ -1070,7 +1074,7 @@ return(
 
 // ═══ USER MANAGEMENT ═══
 function UserMgmt({users,setUsers,cu,P,pr}){
-const[show,setShow]=useState(false);const[nu,setNU]=useState({un:"",pw:"",name:"",email:"",role:"agent",partner:""});
+const[show,setShow]=useState(false);const[nu,setNU]=useState({un:"",pw:"",fname:"",lname:"",email:"",role:"agent",partner:"",supervisor:""});
 const[delCode,setDelCode]=useState("");const[delTarget,setDelTarget]=useState(null);
 return(<div>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
@@ -1079,14 +1083,17 @@ return(<div>
 
 {show&&<div style={{background:"white",borderRadius:12,padding:18,marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginBottom:8}}>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Username</label><input value={nu.un} onChange={e=>setNU(p=>({...p,un:e.target.value}))} style={iS}/></div>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Password</label><input value={nu.pw} onChange={e=>setNU(p=>({...p,pw:e.target.value}))} style={iS}/></div>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ονοματεπώνυμο</label><input value={nu.name} onChange={e=>setNU(p=>({...p,name:e.target.value}))} style={iS}/></div>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Email</label><input value={nu.email} onChange={e=>setNU(p=>({...p,email:e.target.value}))} style={iS}/></div>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ρόλος</label><select value={nu.role} onChange={e=>setNU(p=>({...p,role:e.target.value}))} style={iS}>{Object.entries(ROLES).filter(([k])=>cu.role==="admin"||k!=="admin").map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
-<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Username *</label><input value={nu.un} onChange={e=>setNU(p=>({...p,un:e.target.value}))} style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Password *</label><input value={nu.pw} onChange={e=>setNU(p=>({...p,pw:e.target.value}))} type="password" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Όνομα *</label><input value={nu.fname} onChange={e=>setNU(p=>({...p,fname:e.target.value}))} placeholder="Όνομα" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Επώνυμο *</label><input value={nu.lname} onChange={e=>setNU(p=>({...p,lname:e.target.value}))} placeholder="Επώνυμο" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Email</label><input value={nu.email} onChange={e=>setNU(p=>({...p,email:e.target.value}))} type="email" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ρόλος *</label><select value={nu.role} onChange={e=>setNU(p=>({...p,role:e.target.value,supervisor:"",partner:""}))} style={iS}>{Object.entries(ROLES).filter(([k])=>cu.role==="admin"||k!=="admin").map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
+{nu.role==="partner"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Supervisor</label><select value={nu.supervisor} onChange={e=>setNU(p=>({...p,supervisor:e.target.value}))} style={iS}><option value="">— Επιλέξτε —</option>{users.filter(u=>u.role==="supervisor").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>}
+{nu.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner *</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">— Επιλέξτε —</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
+{(nu.role!=="agent"&&nu.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner (προαιρ.)</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
 </div>
-<button onClick={()=>{if(nu.un&&nu.pw&&nu.name){setUsers(p=>[...p,{...nu,id:`U${String(p.length+10).padStart(3,"0")}`,active:1,paused:0}]);setNU({un:"",pw:"",name:"",email:"",role:"agent",partner:""});setShow(false);}}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
+<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){const name=`${nu.fname} ${nu.lname}`;const newUser={un:nu.un,pw:nu.pw,name,email:nu.email,role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",active:1,paused:0,tixOff:0,id:`U${String(users.length+10).padStart(3,"0")}`};setUsers(p=>[...p,newUser]);setNU({un:"",pw:"",fname:"",lname:"",email:"",role:"agent",partner:"",supervisor:""});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
 </div>}
 
 {/* Delete modal for Director */}
@@ -1094,10 +1101,7 @@ return(<div>
 <div style={{background:"white",borderRadius:12,padding:24,width:360}}>
 <h3 style={{fontFamily:"'Outfit'",fontWeight:700,marginBottom:12}}>🔑 Κωδικός Διαγραφής</h3>
 <p style={{fontSize:"0.82rem",marginBottom:10}}>Διαγραφή: <strong>{delTarget.name}</strong></p>
-{cu.role==="director"&&<><input placeholder="Κωδικός Admin..." value={delCode} onChange={e=>setDelCode(e.target.value)} style={{...iS,marginBottom:8}}/>
-<div style={{display:"flex",gap:6}}>
-<button onClick={()=>{if(delCode==="delete123"){setUsers(p=>p.filter(x=>x.id!==delTarget.id));setDelTarget(null);setDelCode("");}else alert("Λάθος κωδικός!");}} style={B("#E60000","white",{})}>🗑 Διαγραφή</button>
-<button onClick={()=>{setDelTarget(null);setDelCode("");}} style={B("#999","white",{})}>Ακύρωση</button></div></>}
+
 {cu.role==="admin"&&<div style={{display:"flex",gap:6}}>
 <button onClick={()=>{setUsers(p=>p.filter(x=>x.id!==delTarget.id));setDelTarget(null);}} style={B("#E60000","white",{})}>🗑 Διαγραφή</button>
 <button onClick={()=>setDelTarget(null)} style={B("#999","white",{})}>Ακύρωση</button></div>}
@@ -1116,9 +1120,10 @@ return(<div>
 <td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{u.partner||"—"}</td>
 <td style={{padding:"8px 10px"}}><span style={bg(u.paused?"#FFE6E6":u.active?"#E6F9EE":"#F5F5F5",u.paused?"#E60000":u.active?"#00A651":"#999")}>{u.paused?"⏸ Παύση":u.active?"🟢 Ενεργός":"⚫ Off"}</span></td>
 <td style={{padding:"8px 10px"}}><div style={{display:"flex",gap:3}}>
-<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} title={u.paused?"Ενεργοποίηση":"Παύση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.paused?"▶️":"⏸"}</button>
-<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,active:x.active?0:1}:x))} title={u.active?"Απενεργοποίηση":"Ενεργοποίηση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.active?"🔒":"🔓"}</button>
-{(P.delUsers||P.needsCode)&&u.role!=="admin"&&<button onClick={()=>setDelTarget(u)} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑</button>}
+{!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} title={u.paused?"Ενεργοποίηση":"Παύση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.paused?"▶️":"⏸"}</button>
+{cu.role==="admin"&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,tixOff:x.tixOff?0:1}:x))} title={u.tixOff?"Ενεργ. Αιτήματα":"Απενεργ. Αιτήματα"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.tixOff?"#FFEBEE":"#E8F5E9",color:u.tixOff?"#C62828":"#2E7D32",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.tixOff?"🎫❌":"🎫✅"}</button>}}
+{!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,active:x.active?0:1}:x))} title={u.active?"Απενεργοποίηση":"Ενεργοποίηση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.active?"🔒":"🔓"}</button>}
+{cu.role==="admin"&&u.role!=="admin"&&<button onClick={()=>setDelTarget(u)} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑</button>}
 </div></td></tr>)}
 </tbody></table></div></div>);}
 
