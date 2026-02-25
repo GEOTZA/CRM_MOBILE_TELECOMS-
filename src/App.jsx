@@ -218,7 +218,7 @@ const expReport=async(title,headers,rows,filename)=>{
 // ═══ MAIN APP ═══
 export default function App(){
 const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
-const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);
+const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);const[tixEnabled,setTixEnabled]=useState(true);
 const[afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
 const[sbOpen,setSbOpen]=useState(true);const[qSearch,setQSearch]=useState("");
 const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
@@ -312,7 +312,7 @@ const loadFromSupa=async()=>{
       const mData=await mRes.json();
       const msgMap={};
       if(mData&&Array.isArray(mData)){mData.forEach(m=>{if(!msgMap[m.ticket_id])msgMap[m.ticket_id]=[];msgMap[m.ticket_id].push({uid:m.uid||m.user_id,uname:m.uname||m.user_name,role:m.role||m.user_role,text:m.text,ts:m.ts||m.created_at,attachments:m.attachments?JSON.parse(m.attachments):[]});});}
-      setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,afm:t.afm,cname:t.cname,reason:t.reason,reqId:t.req_id,agentName:t.agent_name,agentId:t.agent_id,msgs:msgMap[t.id]||[]})));
+      setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,afm:t.afm,cname:t.cname,reason:t.reason,title:t.title||"",reqId:t.req_id,agentName:t.agent_name,agentId:t.agent_id,msgs:msgMap[t.id]||[]})));
     }
     console.log("✅ Data loaded from Supabase");
   }catch(e){console.error("Load error:",e);}
@@ -451,7 +451,7 @@ return(
 
 {[["dash","📊","Αιτήσεις",true],
 ["search","🔍","Αναζήτηση",true],
-["tix","🎫","Αιτήματα",!cu?.tixOff],
+["tix","🎫","Αιτήματα",tixEnabled||cu?.role==="admin"],
 ["reports","📈","Reports",P.reports],
 ["users","👥","Χρήστες",P.users],
 ["admin","👑","Admin",P.adminPanel]
@@ -603,7 +603,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
   // Save to Supabase
   if(USE_SUPA){
     try{
-      await fetch(`${SUPA_URL}/rest/v1/tickets`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({id:tkId,afm:t.afm,cname:t.cname,reason:t.reason,req_id:t.reqId,msg:t.msg,agent_name:t.agentName||"",agent_id:t.agentId||"",created_by:cu.id,by_name:cu.name,by_role:cu.role,status:"open",created_at:now,attachments:JSON.stringify(attachments)})});
+      await fetch(`${SUPA_URL}/rest/v1/tickets`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({id:tkId,afm:t.afm,cname:t.cname,reason:t.reason,title:t.title||"",req_id:t.reqId,msg:t.msg,agent_name:t.agentName||"",agent_id:t.agentId||"",created_by:cu.id,by_name:cu.name,by_role:cu.role,status:"open",created_at:now,attachments:JSON.stringify(attachments)})});
       await fetch(`${SUPA_URL}/rest/v1/ticket_messages`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({ticket_id:tkId,uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,attachments:JSON.stringify(attachments),ts:now})});
       auditLog(cu.id,"create","tickets",tkId,{reason:t.reason,cname:t.cname});
       console.log("✅ Ticket saved to Supabase:",tkId);
@@ -644,7 +644,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 
 {/* SYSTEM */}
 
-{tab==="admin"&&P.adminPanel&&<AdminPanel users={users} setUsers={setUsers} reqs={reqs} setReqs={setReqs} afmDb={afmDb} setAfmDb={setAfmDb} cu={cu} pr={pr} sysPaused={sysPaused} setSysPaused={setSysPaused}/>}
+{tab==="admin"&&P.adminPanel&&<AdminPanel users={users} setUsers={setUsers} reqs={reqs} setReqs={setReqs} afmDb={afmDb} setAfmDb={setAfmDb} cu={cu} pr={pr} sysPaused={sysPaused} setSysPaused={setSysPaused} tixEnabled={tixEnabled} setTixEnabled={setTixEnabled} tix={tix} setTix={setTix}/>}
 
 {tab==="sys"&&P.pause&&<SysMgmt sp={sysPaused} setSP={setSysPaused} users={users} setUsers={setUsers} pr={pr}/>}
 
@@ -945,7 +945,7 @@ return <button key={i} onClick={()=>downloadDoc(d.path,d.name)} style={{padding:
 
 // ═══ TICKETS ═══
 function TixList({tix,cu,P,pr,onSel,onCreate,reqs,afmDb}){
-const[show,setShow]=useState(false);const[nt,setNT]=useState({afm:"",cname:"",reason:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null});
+const[show,setShow]=useState(false);const[nt,setNT]=useState({afm:"",cname:"",reason:"",title:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null});
 const[custReqs,setCustReqs]=useState([]);
 const vis=P.viewAll?tix:tix.filter(t=>t.by===cu.id);
 
@@ -1001,6 +1001,7 @@ return(<div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8,marginBottom:8}}>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ονοματεπώνυμο *</label><input value={nt.cname} onChange={e=>setNT(p=>({...p,cname:e.target.value}))} style={iS}/></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Λόγος *</label><select value={nt.reason} onChange={e=>setNT(p=>({...p,reason:e.target.value}))} style={iS}><option value="">Επιλέξτε...</option>{TICKET_R.map(r=><option key={r}>{r}</option>)}</select></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Τίτλος</label><input value={nt.title||""} onChange={e=>setNT(p=>({...p,title:e.target.value.slice(0,40)}))} maxLength={40} placeholder="Σύντομη περιγραφή (max 40)" style={iS}/><span style={{fontSize:"0.6rem",color:"#999"}}>{(nt.title||"").length}/40</span></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Αρ.Αίτησης</label><input value={nt.reqId} onChange={e=>setNT(p=>({...p,reqId:e.target.value}))} placeholder="REQ-..." style={iS}/></div></div>
 <div style={{marginBottom:8}}><label style={{fontSize:"0.74rem",fontWeight:600}}>Μήνυμα *</label><textarea value={nt.msg} onChange={e=>setNT(p=>({...p,msg:e.target.value}))} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></div>
 <div style={{marginBottom:8}}>
@@ -1014,24 +1015,25 @@ return(<div>
 <button onClick={()=>{const nf=[...(nt.files||[])];nf.splice(i,1);setNT(p=>({...p,files:nf}));}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"3px 6px",cursor:"pointer",fontSize:"0.7rem"}}>✕</button>
 </div>))}
 </div>
-<button onClick={()=>{if(nt.afm&&nt.cname&&nt.reason&&nt.msg){onCreate({...nt});setNT({afm:"",cname:"",reason:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null,files:[]});setCustReqs([]);setShow(false);}else alert("Συμπληρώστε ΑΦΜ, Όνομα, Λόγο και Μήνυμα");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>📤 Δημιουργία</button>
+<button onClick={()=>{if(nt.afm&&nt.cname&&nt.reason&&nt.msg){onCreate({...nt});setNT({afm:"",cname:"",reason:"",title:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null,files:[]});setCustReqs([]);setShow(false);}else alert("Συμπληρώστε ΑΦΜ, Όνομα, Λόγο και Μήνυμα");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>📤 Δημιουργία</button>
 </div>}
 
 <div style={{background:"white",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"hidden"}}>
 <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>
-{["ID","Πελάτης","ΑΦΜ","Λόγος","Ημ/νία","Από","Status","💬"].map(h=><th key={h} style={{padding:"8px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.68rem",color:"#888",textAlign:"left"}}>{h}</th>)}
+{["ID","Πελάτης","ΑΦΜ","Λόγος","Τίτλος","Ημ/νία","Από","Status","💬"].map(h=><th key={h} style={{padding:"8px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.68rem",color:"#888",textAlign:"left"}}>{h}</th>)}
 </tr></thead><tbody>
 {vis.map(t=><tr key={t.id} style={{borderBottom:"1px solid #F5F5F5",cursor:"pointer"}} onClick={()=>onSel(t)}>
 <td style={{padding:"8px 10px",fontWeight:700,color:pr.color,fontSize:"0.78rem"}}>{t.id}</td>
 <td style={{padding:"8px 10px",fontSize:"0.8rem"}}>{t.cname}</td>
 <td style={{padding:"8px 10px",fontSize:"0.8rem"}}>{t.afm}</td>
 <td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{t.reason}</td>
+<td style={{padding:"8px 10px",fontSize:"0.74rem",color:"#555",fontStyle:"italic",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.title||"—"}</td>
 <td style={{padding:"8px 10px",fontSize:"0.74rem"}}>{t.at}</td>
 <td style={{padding:"8px 10px",fontSize:"0.76rem"}}>{t.byName}</td>
 <td style={{padding:"8px 10px"}}><span style={bg(t.status==="open"?"#E8F5E9":"#F5F5F5",t.status==="open"?"#2E7D32":"#999")}>{t.status==="open"?"🟢 Ανοικτό":"⚫ Κλειστό"}</span></td>
 <td style={{padding:"8px 10px",fontSize:"0.78rem"}}>💬 {t.msgs.length}</td>
 </tr>)}
-{!vis.length&&<tr><td colSpan={8} style={{textAlign:"center",padding:24,color:"#999"}}>Δεν υπάρχουν αιτήματα</td></tr>}
+{!vis.length&&<tr><td colSpan={9} style={{textAlign:"center",padding:24,color:"#999"}}>Δεν υπάρχουν αιτήματα</td></tr>}
 </tbody></table></div></div>);}
 
 function TixDetail({t,cu,pr,onBack,onReply,onClose,onDelete}){
@@ -1039,7 +1041,7 @@ const[rp,setRP]=useState("");const[rpFiles,setRPFiles]=useState([]);
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
 <div style={{background:pr.grad,padding:"14px 20px",color:"white",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-<div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.1rem"}}>🎫 {t.id}</h2><div style={{opacity:0.85,fontSize:"0.8rem"}}>{t.cname} • {t.reason}{t.agentName&&<span> • 👤 {t.agentName}</span>}</div></div>
+<div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.1rem"}}>🎫 {t.id}</h2><div style={{opacity:0.85,fontSize:"0.8rem"}}>{t.cname} • {t.reason}{t.title&&<span style={{fontStyle:"italic"}}> — {t.title}</span>}{t.agentName&&<span> • 👤 {t.agentName}</span>}</div></div>
 <div style={{display:"flex",gap:5}}>
 <span style={bg(t.status==="open"?"#E8F5E9":"#F5F5F5",t.status==="open"?"#2E7D32":"#999")}>{t.status==="open"?"🟢 Ανοικτό":"⚫ Κλειστό"}</span>
 {t.status==="open"&&(cu.role==="backoffice"||cu.role==="supervisor"||cu.role==="admin")&&<button onClick={onClose} style={B("rgba(255,255,255,0.2)","white",{})}>🔒 Κλείσιμο</button>}
@@ -1057,7 +1059,7 @@ return(
 <span style={{fontSize:"0.7rem",color:"#999"}}>{m.ts}</span></div>
 <p style={{fontSize:"0.84rem"}}>{m.text}</p>
 {m.attachments&&m.attachments.length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
-{m.attachments.map((a,j)=><button key={j} onClick={()=>downloadDoc(a.path,a.name)} style={{padding:"3px 8px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.68rem",fontWeight:600,border:"none",cursor:"pointer"}}>📎 {a.name}</button>)}
+{m.attachments&&m.attachments.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{m.attachments.map((a,j)=><button key={j} onClick={()=>downloadDoc(a.path,a.name)} style={{padding:"4px 10px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.7rem",fontWeight:600,border:"none",cursor:"pointer",textAlign:"left",display:"block"}}>📎 {a.name}</button>)}</div>}
 </div>}
 </div>))}
 </div>
@@ -1121,7 +1123,7 @@ return(<div>
 <td style={{padding:"8px 10px"}}><span style={bg(u.paused?"#FFE6E6":u.active?"#E6F9EE":"#F5F5F5",u.paused?"#E60000":u.active?"#00A651":"#999")}>{u.paused?"⏸ Παύση":u.active?"🟢 Ενεργός":"⚫ Off"}</span></td>
 <td style={{padding:"8px 10px"}}><div style={{display:"flex",gap:3}}>
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} title={u.paused?"Ενεργοποίηση":"Παύση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.paused?"▶️":"⏸"}</button>}
-{cu.role==="admin"&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,tixOff:x.tixOff?0:1}:x))} title={u.tixOff?"Ενεργ. Αιτήματα":"Απενεργ. Αιτήματα"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.tixOff?"#FFEBEE":"#E8F5E9",color:u.tixOff?"#C62828":"#2E7D32",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.tixOff?"🎫❌":"🎫✅"}</button>}
+
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,active:x.active?0:1}:x))} title={u.active?"Απενεργοποίηση":"Ενεργοποίηση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.active?"🔒":"🔓"}</button>}
 {cu.role==="admin"&&u.role!=="admin"&&<button onClick={()=>setDelTarget(u)} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑</button>}
 </div></td></tr>)}
@@ -1429,7 +1431,7 @@ return(
 
 </div>);}
 
-function AdminPanel({users,setUsers,reqs,setReqs,afmDb,setAfmDb,cu,pr,sysPaused,setSysPaused}){
+function AdminPanel({users,setUsers,reqs,setReqs,afmDb,setAfmDb,cu,pr,sysPaused,setSysPaused,tixEnabled,setTixEnabled,tix,setTix}){
 // ALL hooks at top — never inside conditions
 const[sec,setSec]=useState("ov");
 const[showU,setShowU]=useState(false);
@@ -1455,6 +1457,7 @@ if(sec==="ov")return(<div>
 <AdmCd ic="📝" ti="Dropdown Lists" ds="Προγράμματα, couriers, υπηρεσίες" ct={dds.length} cl="#FF9800" onClick={()=>setSec("dd")}/>
 <AdmCd ic="👤" ti="Πελάτες ΑΦΜ" ds="Βάση δεδομένων, προσθήκη/διαγραφή" ct={afmDb.length} cl="#9C27B0" onClick={()=>setSec("cu")}/>
 <AdmCd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, διαγραφή, status" ct={reqs.length} cl="#FF5722" onClick={()=>setSec("rq")}/>
+<AdmCd ic="🎫" ti="Αιτήματα" ds="Διαχείριση tickets" ct={tix?.length||0} cl="#9C27B0" onClick={()=>setSec("tk")}/>
 <AdmCd ic="🔧" ti="Σύστημα" ds="Παύση συστήματος" cl="#607D8B" onClick={()=>setSec("sy")}/>
 <AdmCd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
 </div></div>);
@@ -1540,6 +1543,32 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
 
 // ─── SYSTEM ───
+if(sec==="tk")return(<div><AdmBk onClick={()=>setSec("ov")}/>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🎫 Διαχείριση Αιτημάτων</h1>
+<div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
+<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16}}>
+<div><span style={{fontWeight:700,fontSize:"0.9rem"}}>Υπηρεσία Αιτημάτων</span><br/><span style={{fontSize:"0.75rem",color:"#888"}}>Ενεργοποίηση/Απενεργοποίηση για όλους τους χρήστες</span></div>
+<button onClick={()=>setTixEnabled(p=>!p)} style={{padding:"10px 24px",borderRadius:8,border:"none",background:tixEnabled?"#4CAF50":"#E60000",color:"white",cursor:"pointer",fontSize:"0.85rem",fontWeight:700,minWidth:140}}>{tixEnabled?"✅ Ενεργό":"❌ Απενεργοποιημένο"}</button>
+</div>
+{!tixEnabled&&<div style={{padding:10,background:"#FFF3E0",borderRadius:8,fontSize:"0.78rem",color:"#E65100",marginBottom:12}}>⚠️ Τα Αιτήματα είναι κρυμμένα για όλους τους χρήστες εκτός Admin</div>}
+</div>
+<div style={{background:"white",borderRadius:12,padding:18}}>
+<h2 style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"1.1rem",marginBottom:12}}>📋 Λίστα Αιτημάτων ({tix?.length||0})</h2>
+{tix&&tix.length>0?<table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>
+{["ID","Πελάτης","ΑΦΜ","Λόγος","Status","Ημ/νία","Ενέργειες"].map(h=><th key={h} style={{padding:"8px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}
+</tr></thead><tbody>
+{tix.map(t=><tr key={t.id} style={{borderBottom:"1px solid #F0F0F0"}}>
+<td style={{padding:"8px 10px",fontSize:"0.78rem",fontWeight:600,color:"#E65100"}}>{t.id}</td>
+<td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{t.cname}</td>
+<td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{t.afm}</td>
+<td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{t.reason}</td>
+<td style={{padding:"8px 10px"}}><span style={{padding:"2px 8px",borderRadius:4,fontSize:"0.68rem",fontWeight:600,background:t.status==="open"?"#E8F5E9":"#F5F5F5",color:t.status==="open"?"#2E7D32":"#999"}}>{t.status==="open"?"🟢 Ανοιχτό":"🔒 Κλειστό"}</span></td>
+<td style={{padding:"8px 10px",fontSize:"0.72rem",color:"#888"}}>{t.at}</td>
+<td style={{padding:"8px 10px"}}><button onClick={async()=>{if(!confirm("Διαγραφή "+t.id+";")){return;}setTix(p=>p.filter(x=>x.id!==t.id));if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/ticket_messages?ticket_id=eq.${t.id}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});await fetch(`${SUPA_URL}/rest/v1/tickets?id=eq.${t.id}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});console.log("✅ Ticket deleted:",t.id);}catch(e){console.error(e);}}}} style={{padding:"3px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td>
+</tr>)}
+</tbody></table>:<p style={{color:"#999",fontSize:"0.85rem"}}>Δεν υπάρχουν αιτήματα</p>}
+</div></div>);
+
 if(sec==="sy")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🔧 Σύστημα</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
