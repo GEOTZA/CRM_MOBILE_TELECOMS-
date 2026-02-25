@@ -219,6 +219,7 @@ const expReport=async(title,headers,rows,filename)=>{
 export default function App(){
 const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
 const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);const[tixEnabled,setTixEnabled]=useState(true);
+const[offers,setOffers]=useState({vodafone:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],cosmote:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],nova:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}]});
 const[afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
 const[sbOpen,setSbOpen]=useState(true);const[qSearch,setQSearch]=useState("");
 const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
@@ -252,7 +253,7 @@ const doLogin=async()=>{
         if(u.password===hash||u.password===pw){
           if(!u.active){alert("Ο λογαριασμός είναι απενεργοποιημένος");return;}
           if(u.paused){alert("Ο λογαριασμός είναι σε παύση");return;}
-          const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0};
+          const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0,mustChangePW:u.must_change_pw||false};
           console.log("✅ LOGIN SUCCESS - setting cu and loggedIn=true", cu.name, cu.role);
           setCU(cu);
           setLI(true);
@@ -314,6 +315,8 @@ const loadFromSupa=async()=>{
       if(mData&&Array.isArray(mData)){mData.forEach(m=>{if(!msgMap[m.ticket_id])msgMap[m.ticket_id]=[];msgMap[m.ticket_id].push({uid:m.uid||m.user_id,uname:m.uname||m.user_name,role:m.role||m.user_role,text:m.text,ts:m.ts||m.created_at,attachments:m.attachments?JSON.parse(m.attachments):[]});});}
       setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,afm:t.afm,cname:t.cname,reason:t.reason,title:t.title||"",reqId:t.req_id,agentName:t.agent_name,agentId:t.agent_id,msgs:msgMap[t.id]||[]})));
     }
+    // Load offers
+    try{const oRes=await fetch(`${SUPA_URL}/rest/v1/offers?select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});const oData=await oRes.json();if(oData&&Array.isArray(oData)&&oData.length>0){const o={vodafone:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],cosmote:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],nova:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}]};oData.forEach(r=>{if(o[r.provider]&&r.slot>=0&&r.slot<3)o[r.provider][r.slot]={desc:r.description||"",path:r.file_path||""};});setOffers(o);}}catch(e){console.warn("Offers load:",e);}
     console.log("✅ Data loaded from Supabase");
   }catch(e){console.error("Load error:",e);}
 }
@@ -373,6 +376,26 @@ const saveReq=async(f)=>{
     }catch(e){console.error("Save error:",e);}
   }
 }
+
+// FORCE CHANGE PASSWORD SCREEN
+const[changePW,setChangePW]=useState({newPW:"",confirm:""});
+if(cu&&cu.mustChangePW)return(
+<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#1A1A2E,#16213E)",fontFamily:"'DM Sans',sans-serif"}}>
+<style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
+<div style={{background:"white",borderRadius:16,padding:32,width:380,boxShadow:"0 8px 32px rgba(0,0,0,0.3)"}}>
+<div style={{textAlign:"center",marginBottom:20}}>
+<div style={{fontSize:"2.5rem",marginBottom:8}}>🔑</div>
+<h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",marginBottom:4}}>Αλλαγή Password</h2>
+<p style={{fontSize:"0.82rem",color:"#888"}}>Πρέπει να αλλάξετε τον κωδικό σας</p>
+</div>
+<div style={{display:"grid",gap:12,marginBottom:16}}>
+<div><label style={{fontSize:"0.74rem",fontWeight:600,display:"block",marginBottom:4}}>Νέο Password *</label><input value={changePW.newPW} onChange={e=>setChangePW(p=>({...p,newPW:e.target.value}))} type="password" placeholder="Τουλάχιστον 6 χαρακτήρες" style={{width:"100%",padding:10,borderRadius:8,border:"1px solid #DDD",fontSize:"0.85rem"}}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600,display:"block",marginBottom:4}}>Επιβεβαίωση *</label><input value={changePW.confirm} onChange={e=>setChangePW(p=>({...p,confirm:e.target.value}))} type="password" placeholder="Ξανά το password" style={{width:"100%",padding:10,borderRadius:8,border:"1px solid #DDD",fontSize:"0.85rem"}}/></div>
+{changePW.newPW&&changePW.newPW.length<6&&<p style={{fontSize:"0.72rem",color:"#E60000",margin:0}}>⚠️ Τουλάχιστον 6 χαρακτήρες</p>}
+{changePW.confirm&&changePW.newPW!==changePW.confirm&&<p style={{fontSize:"0.72rem",color:"#E60000",margin:0}}>⚠️ Δεν ταιριάζουν</p>}
+</div>
+<button onClick={async()=>{if(!changePW.newPW||changePW.newPW.length<6){alert("Τουλάχιστον 6 χαρακτήρες");return;}if(changePW.newPW!==changePW.confirm){alert("Τα passwords δεν ταιριάζουν");return;}const hashed=await hashPW(changePW.newPW);setCU(p=>({...p,pw:hashed,mustChangePW:false}));if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/users?id=eq.${cu.id}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({password:hashed,must_change_pw:false})});console.log("✅ Password changed");}catch(e){console.error(e);}}setChangePW({newPW:"",confirm:""});alert("✅ Ο κωδικός αλλάχθηκε επιτυχώς!");}} style={{width:"100%",padding:12,borderRadius:8,border:"none",background:"linear-gradient(135deg,#E65100,#FF9800)",color:"white",fontWeight:700,fontSize:"0.9rem",cursor:"pointer"}}>🔐 Αλλαγή Password</button>
+</div></div>);
 
 // LOGIN SCREEN
 if(!cu)return(
@@ -452,6 +475,7 @@ return(
 {[["dash","📊","Αιτήσεις",true],
 ["search","🔍","Αναζήτηση",true],
 ["tix","🎫","Αιτήματα",tixEnabled||cu?.role==="admin"],
+["offers","🏷️","Προσφορές",true],
 ["reports","📈","Reports",P.reports],
 ["users","👥","Χρήστες",P.users],
 ["admin","👑","Admin",P.adminPanel]
@@ -640,6 +664,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 {tab==="fields"&&P.fields&&<FieldMgmt pr={pr}/>}
 
 {/* ═══ REPORTS ═══ */}
+{tab==="offers"&&<OffersPanel offers={offers} setOffers={setOffers} cu={cu} pr={pr}/>}
 {tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport} expXLSX={expXLSX}/>}
 
 {/* SYSTEM */}
@@ -1078,6 +1103,7 @@ return(
 function UserMgmt({users,setUsers,cu,P,pr}){
 const[show,setShow]=useState(false);const[nu,setNU]=useState({un:"",pw:"",fname:"",lname:"",email:"",role:"agent",partner:"",supervisor:""});
 const[delCode,setDelCode]=useState("");const[delTarget,setDelTarget]=useState(null);
+const[editUser,setEditUser]=useState(null);const[resetPW,setResetPW]=useState({show:false,uid:null,uname:"",newPW:"",confirm:""});
 return(<div>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900}}>👥 Χρήστες</h1>
@@ -1125,9 +1151,119 @@ return(<div>
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} title={u.paused?"Ενεργοποίηση":"Παύση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.paused?"▶️":"⏸"}</button>}
 
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,active:x.active?0:1}:x))} title={u.active?"Απενεργοποίηση":"Ενεργοποίηση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.active?"🔒":"🔓"}</button>}
+{!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setEditUser({...u,fname:u.name?.split(" ")[0]||"",lname:u.name?.split(" ").slice(1).join(" ")||""})} title="Επεξεργασία" style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1565C0",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>✏️</button>}
+{!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setResetPW({show:true,uid:u.id,uname:u.name,newPW:"",confirm:""})} title="Reset Password" style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFF3E0",color:"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🔑</button>}
 {cu.role==="admin"&&u.role!=="admin"&&<button onClick={()=>setDelTarget(u)} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑</button>}
 </div></td></tr>)}
-</tbody></table></div></div>);}
+</tbody></table></div>
+
+{/* EDIT USER MODAL */}
+{editUser&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+<div style={{background:"white",borderRadius:12,padding:24,width:420,maxHeight:"90vh",overflow:"auto"}}>
+<h3 style={{fontFamily:"'Outfit'",fontWeight:700,marginBottom:14}}>✏️ Επεξεργασία: {editUser.name}</h3>
+<div style={{display:"grid",gap:10,marginBottom:14}}>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Username</label><input value={editUser.un} onChange={e=>setEditUser(p=>({...p,un:e.target.value}))} style={iS}/></div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Όνομα</label><input value={editUser.fname} onChange={e=>setEditUser(p=>({...p,fname:e.target.value}))} style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Επώνυμο</label><input value={editUser.lname} onChange={e=>setEditUser(p=>({...p,lname:e.target.value}))} style={iS}/></div>
+</div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Email</label><input value={editUser.email||""} onChange={e=>setEditUser(p=>({...p,email:e.target.value}))} type="email" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ρόλος</label><select value={editUser.role} onChange={e=>setEditUser(p=>({...p,role:e.target.value}))} style={iS} disabled={cu.role==="director"&&editUser.role==="admin"}>{Object.entries(ROLES).filter(([k])=>cu.role==="admin"||k!=="admin").map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
+{editUser.role==="partner"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Supervisor</label><select value={editUser.supervisor||""} onChange={e=>setEditUser(p=>({...p,supervisor:e.target.value}))} style={iS}><option value="">—</option>{users.filter(u=>u.role==="supervisor").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>}
+{editUser.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner</label><select value={editUser.partner||""} onChange={e=>setEditUser(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
+{(editUser.role!=="agent"&&editUser.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner</label><select value={editUser.partner||""} onChange={e=>setEditUser(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
+</div>
+<div style={{display:"flex",gap:8}}>
+<button onClick={()=>{const name=`${editUser.fname} ${editUser.lname}`.trim()||editUser.name;setUsers(p=>p.map(u=>u.id===editUser.id?{...u,un:editUser.un,name,email:editUser.email,role:editUser.role,partner:editUser.partner||"",supervisor:editUser.supervisor||""}:u));setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Αποθήκευση</button>
+<button onClick={()=>setEditUser(null)} style={B("#999","white",{padding:"8px 20px"})}>Ακύρωση</button>
+</div>
+</div></div>}
+
+{/* RESET PASSWORD MODAL */}
+{resetPW.show&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
+<div style={{background:"white",borderRadius:12,padding:24,width:380}}>
+<h3 style={{fontFamily:"'Outfit'",fontWeight:700,marginBottom:6}}>🔑 Reset Password</h3>
+<p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Χρήστης: <strong>{resetPW.uname}</strong></p>
+<div style={{display:"grid",gap:10,marginBottom:14}}>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Νέο Password *</label><input value={resetPW.newPW} onChange={e=>setResetPW(p=>({...p,newPW:e.target.value}))} type="password" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Επιβεβαίωση *</label><input value={resetPW.confirm} onChange={e=>setResetPW(p=>({...p,confirm:e.target.value}))} type="password" style={iS}/></div>
+{resetPW.newPW&&resetPW.newPW.length<6&&<p style={{fontSize:"0.72rem",color:"#E60000"}}>⚠️ Τουλάχιστον 6 χαρακτήρες</p>}
+{resetPW.confirm&&resetPW.newPW!==resetPW.confirm&&<p style={{fontSize:"0.72rem",color:"#E60000"}}>⚠️ Τα passwords δεν ταιριάζουν</p>}
+</div>
+<div style={{display:"flex",gap:8}}>
+<button onClick={async()=>{if(!resetPW.newPW||resetPW.newPW.length<6){alert("Τουλάχιστον 6 χαρακτήρες");return;}if(resetPW.newPW!==resetPW.confirm){alert("Τα passwords δεν ταιριάζουν");return;}const hashed=await hashPW(resetPW.newPW);setUsers(p=>p.map(u=>u.id===resetPW.uid?{...u,pw:hashed,mustChangePW:1}:u));if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/users?id=eq.${resetPW.uid}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({pw:hashed,must_change_pw:true})});console.log("✅ Password reset for",resetPW.uname);}catch(e){console.error(e);}}setResetPW({show:false,uid:null,uname:"",newPW:"",confirm:""});alert("✅ Password αλλάχθηκε! Ο χρήστης θα πρέπει να το αλλάξει στο πρώτο login.");}} style={B("#E65100","white",{padding:"8px 20px"})}>🔑 Reset</button>
+<button onClick={()=>setResetPW({show:false,uid:null,uname:"",newPW:"",confirm:""})} style={B("#999","white",{padding:"8px 20px"})}>Ακύρωση</button>
+</div>
+</div></div>}
+
+</div>);}
+
+// ═══ OFFERS PANEL ═══
+function OffersPanel({offers,setOffers,cu,pr}){
+const canEdit=["admin","director","backoffice"].includes(cu.role);
+const provs=[
+  {key:"vodafone",name:"Vodafone",color:"#E60000",icon:"📡"},
+  {key:"cosmote",name:"Cosmote",color:"#00A651",icon:"🟢"},
+  {key:"nova",name:"Nova",color:"#1565C0",icon:"🔵"}
+];
+
+const uploadOffer=async(provKey,slot,file,desc)=>{
+  try{
+    const ext=file.name.split(".").pop()||"pdf";
+    const path=`offers/${provKey}_slot${slot}.${ext}`;
+    // Upload to storage (overwrites existing)
+    const upRes=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":file.type,"x-upsert":"true"},body:file});
+    if(!upRes.ok){
+      // Try update if exists
+      await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"PUT",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":file.type},body:file});
+    }
+    // Save to DB (upsert)
+    await fetch(`${SUPA_URL}/rest/v1/offers`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({provider:provKey,slot,description:desc,file_path:path,updated_by:cu.id,updated_at:new Date().toISOString()})});
+    setOffers(p=>({...p,[provKey]:p[provKey].map((o,i)=>i===slot?{desc,path}:o)}));
+    console.log("✅ Offer uploaded:",provKey,slot);
+  }catch(e){console.error("Offer upload error:",e);alert("Σφάλμα upload");}
+};
+
+return(<div>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:4}}>🏷️ Προσφορές Παρόχων</h1>
+<p style={{color:"#888",fontSize:"0.82rem",marginBottom:20}}>Τρέχουσες προσφορές ανά πάροχο</p>
+
+{provs.map(pv=><div key={pv.key} style={{background:"white",borderRadius:12,padding:18,marginBottom:16,borderLeft:`4px solid ${pv.color}`,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+<h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.1rem",color:pv.color,marginBottom:14}}>{pv.icon} {pv.name}</h2>
+<div style={{display:"grid",gap:12}}>
+{offers[pv.key]?.map((offer,idx)=><OfferSlot key={idx} offer={offer} idx={idx} pv={pv} canEdit={canEdit} onUpload={uploadOffer}/>)}
+</div>
+</div>)}
+</div>);
+}
+
+function OfferSlot({offer,idx,pv,canEdit,onUpload}){
+const[desc,setDesc]=useState(offer.desc||"");
+const[file,setFile]=useState(null);
+const[editing,setEditing]=useState(false);
+
+return(<div style={{background:"#FAFAFA",borderRadius:8,padding:12,border:"1px solid #F0F0F0"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+<span style={{fontWeight:700,fontSize:"0.82rem",color:"#444"}}>📄 Προσφορά #{idx+1}</span>
+{canEdit&&!editing&&<button onClick={()=>setEditing(true)} style={{padding:"3px 10px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1565C0",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>✏️ Επεξεργασία</button>}
+</div>
+
+{editing?<div style={{display:"grid",gap:8}}>
+<div><label style={{fontSize:"0.7rem",fontWeight:600}}>Περιγραφή</label><input value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Περιγραφή προσφοράς..." style={{width:"100%",padding:8,borderRadius:6,border:"1px solid #DDD",fontSize:"0.82rem"}}/></div>
+<div><label style={{fontSize:"0.7rem",fontWeight:600}}>PDF αρχείο {offer.path&&"(αντικαθιστά το υπάρχον)"}</label><input type="file" accept=".pdf" onChange={e=>setFile(e.target.files[0]||null)} style={{fontSize:"0.78rem"}}/></div>
+<div style={{display:"flex",gap:6}}>
+<button onClick={async()=>{if(file){await onUpload(pv.key,idx,file,desc);setFile(null);setEditing(false);}else if(desc!==offer.desc){await fetch(`${SUPA_URL}/rest/v1/offers`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({provider:pv.key,slot:idx,description:desc,file_path:offer.path,updated_at:new Date().toISOString()})});setEditing(false);}else setEditing(false);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#4CAF50",color:"white",cursor:"pointer",fontSize:"0.78rem",fontWeight:600}}>💾 Αποθήκευση</button>
+<button onClick={()=>{setDesc(offer.desc||"");setFile(null);setEditing(false);}} style={{padding:"6px 16px",borderRadius:6,border:"none",background:"#999",color:"white",cursor:"pointer",fontSize:"0.78rem",fontWeight:600}}>Ακύρωση</button>
+</div>
+</div>
+
+:<div>
+{offer.desc?<p style={{fontSize:"0.82rem",color:"#444",margin:"0 0 6px"}}>{offer.desc}</p>:<p style={{fontSize:"0.78rem",color:"#BBB",fontStyle:"italic",margin:"0 0 6px"}}>Χωρίς περιγραφή</p>}
+{offer.path?<button onClick={()=>downloadDoc(offer.path,`${pv.name}_Προσφορά_${idx+1}.pdf`)} style={{padding:"5px 14px",borderRadius:6,border:"1px solid "+pv.color,background:"white",color:pv.color,cursor:"pointer",fontSize:"0.76rem",fontWeight:600}}>📥 Λήψη PDF</button>
+:<span style={{fontSize:"0.74rem",color:"#CCC"}}>— Δεν υπάρχει αρχείο —</span>}
+</div>}
+</div>);
+}
 
 // ═══ FIELD MANAGEMENT ═══
 function FieldMgmt({pr}){
