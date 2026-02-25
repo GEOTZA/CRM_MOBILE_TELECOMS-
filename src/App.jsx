@@ -1101,7 +1101,7 @@ return(
 
 // ═══ USER MANAGEMENT ═══
 function UserMgmt({users,setUsers,cu,P,pr}){
-const[show,setShow]=useState(false);const[nu,setNU]=useState({un:"",pw:"",fname:"",lname:"",email:"",role:"agent",partner:"",supervisor:""});
+const[show,setShow]=useState(false);const[nu,setNU]=useState({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:""});
 const[delCode,setDelCode]=useState("");const[delTarget,setDelTarget]=useState(null);
 const[editUser,setEditUser]=useState(null);const[resetPW,setResetPW]=useState({show:false,uid:null,uname:"",newPW:"",confirm:""});
 return(<div>
@@ -1116,12 +1116,14 @@ return(<div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Όνομα *</label><input value={nu.fname} onChange={e=>setNU(p=>({...p,fname:e.target.value}))} placeholder="Όνομα" style={iS}/></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Επώνυμο *</label><input value={nu.lname} onChange={e=>setNU(p=>({...p,lname:e.target.value}))} placeholder="Επώνυμο" style={iS}/></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Email</label><input value={nu.email} onChange={e=>setNU(p=>({...p,email:e.target.value}))} type="email" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Κινητό</label><input value={nu.mobile} onChange={e=>setNU(p=>({...p,mobile:e.target.value.replace(/\D/g,"").slice(0,10)}))} placeholder="69xxxxxxxx" maxLength={10} style={iS}/></div>
+{(cu.role==="admin"||cu.role==="director")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Κωδικός Χρήστη</label><input value={nu.userCode} onChange={e=>setNU(p=>({...p,userCode:e.target.value}))} placeholder="Μοναδικός κωδικός" style={iS}/></div>}
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ρόλος *</label><select value={nu.role} onChange={e=>setNU(p=>({...p,role:e.target.value,supervisor:"",partner:""}))} style={iS}>{Object.entries(ROLES).filter(([k])=>cu.role==="admin"||k!=="admin").map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
 {nu.role==="partner"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Supervisor</label><select value={nu.supervisor} onChange={e=>setNU(p=>({...p,supervisor:e.target.value}))} style={iS}><option value="">— Επιλέξτε —</option>{users.filter(u=>u.role==="supervisor").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>}
 {nu.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner *</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">— Επιλέξτε —</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
 {(nu.role!=="agent"&&nu.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner (προαιρ.)</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
 </div>
-<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){const name=`${nu.fname} ${nu.lname}`;const newUser={un:nu.un,pw:nu.pw,name,email:nu.email,role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",active:1,paused:0,tixOff:0,id:`U${String(users.length+10).padStart(3,"0")}`};setUsers(p=>[...p,newUser]);setNU({un:"",pw:"",fname:"",lname:"",email:"",role:"agent",partner:"",supervisor:""});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
+<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){const name=`${nu.fname} ${nu.lname}`;const newUser={un:nu.un,pw:nu.pw,name,email:nu.email,mobile:nu.mobile||"",userCode:nu.userCode||"",role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",active:1,paused:0,tixOff:0,id:`U${String(users.length+10).padStart(3,"0")}`};setUsers(p=>[...p,newUser]);setNU({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:""});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
 </div>}
 
 {/* Delete modal for Director */}
@@ -1137,13 +1139,14 @@ return(<div>
 
 <div style={{background:"white",borderRadius:12,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",overflow:"hidden"}}>
 <table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>
-{["ID","Username","Όνομα","Email","Ρόλος","Partner","Status","Ενέργειες"].map(h=><th key={h} style={{padding:"8px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.68rem",color:"#888",textAlign:"left"}}>{h}</th>)}
+{["ID","Username","Όνομα","Email","Κινητό","Ρόλος","Partner","Status","Ενέργειες"].map(h=><th key={h} style={{padding:"8px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.68rem",color:"#888",textAlign:"left"}}>{h}</th>)}
 </tr></thead><tbody>
 {users.map(u=><tr key={u.id} style={{borderBottom:"1px solid #F5F5F5"}}>
 <td style={{padding:"8px 10px",fontSize:"0.78rem",fontWeight:600}}>{u.id}</td>
 <td style={{padding:"8px 10px",fontSize:"0.8rem"}}>{u.un}</td>
 <td style={{padding:"8px 10px",fontSize:"0.8rem"}}>{u.name}</td>
 <td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{u.email}</td>
+<td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{u.mobile||"—"}</td>
 <td style={{padding:"8px 10px"}}><span style={bg(ROLES[u.role]?.c+"20",ROLES[u.role]?.c)}>{ROLES[u.role]?.i} {ROLES[u.role]?.l}</span></td>
 <td style={{padding:"8px 10px",fontSize:"0.78rem"}}>{u.partner||"—"}</td>
 <td style={{padding:"8px 10px"}}><span style={bg(u.paused?"#FFE6E6":u.active?"#E6F9EE":"#F5F5F5",u.paused?"#E60000":u.active?"#00A651":"#999")}>{u.paused?"⏸ Παύση":u.active?"🟢 Ενεργός":"⚫ Off"}</span></td>
@@ -1151,7 +1154,7 @@ return(<div>
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} title={u.paused?"Ενεργοποίηση":"Παύση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.paused?"▶️":"⏸"}</button>}
 
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,active:x.active?0:1}:x))} title={u.active?"Απενεργοποίηση":"Ενεργοποίηση"} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>{u.active?"🔒":"🔓"}</button>}
-{!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setEditUser({...u,fname:u.name?.split(" ")[0]||"",lname:u.name?.split(" ").slice(1).join(" ")||""})} title="Επεξεργασία" style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1565C0",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>✏️</button>}
+{!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setEditUser({...u,fname:u.name?.split(" ")[0]||"",lname:u.name?.split(" ").slice(1).join(" ")||"",mobile:u.mobile||"",userCode:u.userCode||"",newPW:"",confirmPW:""})} title="Επεξεργασία" style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#E3F2FD",color:"#1565C0",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>✏️</button>}
 {!(cu.role==="director"&&u.role==="admin")&&<button onClick={()=>setResetPW({show:true,uid:u.id,uname:u.name,newPW:"",confirm:""})} title="Reset Password" style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFF3E0",color:"#E65100",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🔑</button>}
 {cu.role==="admin"&&u.role!=="admin"&&<button onClick={()=>setDelTarget(u)} style={{padding:"2px 7px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑</button>}
 </div></td></tr>)}
@@ -1159,7 +1162,7 @@ return(<div>
 
 {/* EDIT USER MODAL */}
 {editUser&&<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000}}>
-<div style={{background:"white",borderRadius:12,padding:24,width:420,maxHeight:"90vh",overflow:"auto"}}>
+<div style={{background:"white",borderRadius:12,padding:24,width:440,maxHeight:"90vh",overflow:"auto"}}>
 <h3 style={{fontFamily:"'Outfit'",fontWeight:700,marginBottom:14}}>✏️ Επεξεργασία: {editUser.name}</h3>
 <div style={{display:"grid",gap:10,marginBottom:14}}>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Username</label><input value={editUser.un} onChange={e=>setEditUser(p=>({...p,un:e.target.value}))} style={iS}/></div>
@@ -1167,14 +1170,37 @@ return(<div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Όνομα</label><input value={editUser.fname} onChange={e=>setEditUser(p=>({...p,fname:e.target.value}))} style={iS}/></div>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Επώνυμο</label><input value={editUser.lname} onChange={e=>setEditUser(p=>({...p,lname:e.target.value}))} style={iS}/></div>
 </div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Email</label><input value={editUser.email||""} onChange={e=>setEditUser(p=>({...p,email:e.target.value}))} type="email" style={iS}/></div>
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Κινητό</label><input value={editUser.mobile||""} onChange={e=>setEditUser(p=>({...p,mobile:e.target.value.replace(/\D/g,"").slice(0,10)}))} placeholder="69xxxxxxxx" maxLength={10} style={iS}/></div>
+</div>
+{(cu.role==="admin"||cu.role==="director")&&<div style={{background:"#FFF8E1",borderRadius:8,padding:10,border:"1px solid #FFE0B2"}}>
+<label style={{fontSize:"0.74rem",fontWeight:600,color:"#E65100"}}>🔐 Κωδικός Χρήστη (μόνο Admin/Director)</label>
+<input value={editUser.userCode||""} onChange={e=>setEditUser(p=>({...p,userCode:e.target.value}))} style={{...iS,borderColor:"#FFE0B2"}}/></div>}
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ρόλος</label><select value={editUser.role} onChange={e=>setEditUser(p=>({...p,role:e.target.value}))} style={iS} disabled={cu.role==="director"&&editUser.role==="admin"}>{Object.entries(ROLES).filter(([k])=>cu.role==="admin"||k!=="admin").map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
 {editUser.role==="partner"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Supervisor</label><select value={editUser.supervisor||""} onChange={e=>setEditUser(p=>({...p,supervisor:e.target.value}))} style={iS}><option value="">—</option>{users.filter(u=>u.role==="supervisor").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>}
 {editUser.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner</label><select value={editUser.partner||""} onChange={e=>setEditUser(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
 {(editUser.role!=="agent"&&editUser.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner</label><select value={editUser.partner||""} onChange={e=>setEditUser(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
+{(cu.role==="admin"||cu.role==="director")&&<div style={{background:"#FFEBEE",borderRadius:8,padding:10,border:"1px solid #FFCDD2"}}>
+<label style={{fontSize:"0.74rem",fontWeight:600,color:"#C62828"}}>🔑 Νέος Κωδικός Πρόσβασης (αφήστε κενό αν δεν αλλάζει)</label>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:4}}>
+<input value={editUser.newPW||""} onChange={e=>setEditUser(p=>({...p,newPW:e.target.value}))} type="password" placeholder="Νέο password" style={iS}/>
+<input value={editUser.confirmPW||""} onChange={e=>setEditUser(p=>({...p,confirmPW:e.target.value}))} type="password" placeholder="Επιβεβαίωση" style={iS}/>
+</div>
+{editUser.newPW&&editUser.newPW.length<6&&<p style={{fontSize:"0.68rem",color:"#C62828",margin:"4px 0 0"}}>⚠️ Min 6 χαρακτήρες</p>}
+{editUser.confirmPW&&editUser.newPW!==editUser.confirmPW&&<p style={{fontSize:"0.68rem",color:"#C62828",margin:"4px 0 0"}}>⚠️ Δεν ταιριάζουν</p>}
+</div>}
 </div>
 <div style={{display:"flex",gap:8}}>
-<button onClick={()=>{const name=`${editUser.fname} ${editUser.lname}`.trim()||editUser.name;setUsers(p=>p.map(u=>u.id===editUser.id?{...u,un:editUser.un,name,email:editUser.email,role:editUser.role,partner:editUser.partner||"",supervisor:editUser.supervisor||""}:u));setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Αποθήκευση</button>
+<button onClick={async()=>{const name=`${editUser.fname} ${editUser.lname}`.trim()||editUser.name;
+const updates={un:editUser.un,name,email:editUser.email,mobile:editUser.mobile||"",userCode:editUser.userCode||"",role:editUser.role,partner:editUser.partner||"",supervisor:editUser.supervisor||""};
+// Check if password change requested
+if(editUser.newPW){if(editUser.newPW.length<6){alert("Password: min 6 χαρακτήρες");return;}if(editUser.newPW!==editUser.confirmPW){alert("Τα passwords δεν ταιριάζουν");return;}updates.pw=await hashPW(editUser.newPW);updates.mustChangePW=1;}
+// If admin/director changed userCode, force password change
+if(editUser.userCode!==(users.find(u=>u.id===editUser.id)?.userCode||"")){updates.mustChangePW=1;}
+setUsers(p=>p.map(u=>u.id===editUser.id?{...u,...updates}:u));
+if(USE_SUPA){try{const dbUp={username:updates.un,name:updates.name,email:updates.email,mobile:updates.mobile,user_code:updates.userCode,role:updates.role,partner:updates.partner};if(updates.pw)dbUp.password=updates.pw;if(updates.mustChangePW)dbUp.must_change_pw=true;await fetch(`${SUPA_URL}/rest/v1/users?id=eq.${editUser.id}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify(dbUp)});console.log("✅ User updated:",editUser.id);}catch(e){console.error(e);}}
+setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Αποθήκευση</button>
 <button onClick={()=>setEditUser(null)} style={B("#999","white",{padding:"8px 20px"})}>Ακύρωση</button>
 </div>
 </div></div>}
