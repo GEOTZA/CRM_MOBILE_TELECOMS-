@@ -307,7 +307,12 @@ const loadFromSupa=async()=>{
     const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const tData=await tRes.json();
     if(tData&&Array.isArray(tData)){
-      setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,msgs:[]})));
+      // Load messages for each ticket
+      const mRes=await fetch(`${SUPA_URL}/rest/v1/ticket_messages?select=*&order=created_at.asc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+      const mData=await mRes.json();
+      const msgMap={};
+      if(mData&&Array.isArray(mData)){mData.forEach(m=>{if(!msgMap[m.ticket_id])msgMap[m.ticket_id]=[];msgMap[m.ticket_id].push({uid:m.uid,uname:m.uname,role:m.role,text:m.text,ts:m.created_at,attachments:m.attachments?JSON.parse(m.attachments):[]});});}
+      setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,afm:t.afm,cname:t.cname,reason:t.reason,reqId:t.req_id,agentName:t.agent_name,agentId:t.agent_id,msgs:msgMap[t.id]||[]})));
     }
     console.log("✅ Data loaded from Supabase");
   }catch(e){console.error("Load error:",e);}
@@ -578,7 +583,8 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 </div></div>);})()}
 
 {tab==="tix"&&!selTix&&<TixList tix={tix} cu={cu} P={P} pr={pr} reqs={reqs} afmDb={afmDb} onSel={setSelTix} onCreate={async(t)=>{
-  const tkId=`TK-${String(tix.length+1).padStart(5,"0")}`;
+  try{
+  const tkId=`TK-${String(Math.max(0,...tix.map(t=>parseInt(t.id?.replace("TK-",""))||0))+1).padStart(5,"0")}`;
   // Upload ticket files
   const attachments=[];
   if(t.files&&t.files.length>0){
@@ -586,7 +592,25 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
       if(f){try{const ext=f.name.split(".").pop()||"bin";const path=`tickets/${tkId}/${Date.now()}.${ext}`;if(USE_SUPA)await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type},body:f});attachments.push({name:f.name,path});}catch(e){console.error("File upload error:",e);}}
     }
   }
-  const nt={...t,id:tkId,by:cu.id,byName:cu.name,byRole:cu.role,at:ts(),status:"open",msgs:[{uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:ts(),attachments}]};setTix(p=>[nt,...p]);users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason} — ${t.cname}`));if(t.agentId&&t.agentId!==cu.id)addN(t.agentId,`🎫 Αίτημα ${tkId}: ${t.reason}`);}}/>}
+  // IMPORTANT: exclude files and custInfo from ticket state (File objects crash Safari)
+  const{files,custInfo,...ticketData}=t;
+  const now=ts();
+  const firstMsg={uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,ts:now,attachments};
+  const nt={...ticketData,id:tkId,by:cu.id,byName:cu.name,byRole:cu.role,at:now,status:"open",msgs:[firstMsg]};
+  setTix(p=>[nt,...p]);
+  users.filter(u=>u.role==="backoffice"||u.role==="supervisor").forEach(u=>addN(u.id,`🎫 Νέο αίτημα: ${t.reason} — ${t.cname}`));
+  if(t.agentId&&t.agentId!==cu.id)addN(t.agentId,`🎫 Αίτημα ${tkId}: ${t.reason}`);
+  // Save to Supabase
+  if(USE_SUPA){
+    try{
+      await fetch(`${SUPA_URL}/rest/v1/tickets`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({id:tkId,afm:t.afm,cname:t.cname,reason:t.reason,req_id:t.reqId,msg:t.msg,agent_name:t.agentName||"",agent_id:t.agentId||"",created_by:cu.id,by_name:cu.name,by_role:cu.role,status:"open",created_at:now,attachments:JSON.stringify(attachments)})});
+      await fetch(`${SUPA_URL}/rest/v1/ticket_messages`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({ticket_id:tkId,uid:cu.id,uname:cu.name,role:cu.role,text:t.msg,attachments:JSON.stringify(attachments),created_at:now})});
+      auditLog(cu.id,"create","tickets",tkId,{reason:t.reason,cname:t.cname});
+      console.log("✅ Ticket saved to Supabase:",tkId);
+    }catch(e){console.error("Ticket save error:",e);}
+  }
+  }catch(e){console.error("Ticket creation error:",e);}
+}}/>}
 {tab==="tix"&&selTix&&<TixDetail t={selTix} cu={cu} pr={pr} onBack={()=>setSelTix(null)} onReply={async(txt,files)=>{
   // Upload attachments
   const attachments=[];
@@ -600,7 +624,12 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
       }catch(e){console.error("File upload error:",e);}
     }
   }
-  const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts(),attachments};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση ${selTix.id}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση ${selTix.id}`));}} onClose={()=>{setTix(p=>p.map(t=>t.id===selTix.id?{...t,status:"closed"}:t));setSelTix(p=>({...p,status:"closed"}));}}/>}
+  const now=ts();const m={uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:now,attachments};setTix(p=>p.map(t=>t.id===selTix.id?{...t,msgs:[...t.msgs,m]}:t));setSelTix(p=>({...p,msgs:[...p.msgs,m]}));if(cu.role==="backoffice")addN(selTix.by,`💬 Απάντηση ${selTix.id}`);else users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Απάντηση ${selTix.id}`));
+  // Save message to Supabase
+  if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/ticket_messages`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"return=minimal"},body:JSON.stringify({ticket_id:selTix.id,uid:cu.id,uname:cu.name,role:cu.role,text:txt,attachments:JSON.stringify(attachments),created_at:now})});console.log("✅ Reply saved");}catch(e){console.error("Reply save error:",e);}}
+}} onClose={async()=>{setTix(p=>p.map(t=>t.id===selTix.id?{...t,status:"closed"}:t));setSelTix(p=>({...p,status:"closed"}));
+  if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/tickets?id=eq.${selTix.id}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({status:"closed"})});console.log("✅ Ticket closed in DB");}catch(e){console.error("Close error:",e);}}
+}}/>}
 
 {/* USERS */}
 {tab==="users"&&P.users&&<UserMgmt users={users} setUsers={setUsers} cu={cu} P={P} pr={pr}/>}
