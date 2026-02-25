@@ -308,10 +308,10 @@ const loadFromSupa=async()=>{
     const tData=await tRes.json();
     if(tData&&Array.isArray(tData)){
       // Load messages for each ticket
-      const mRes=await fetch(`${SUPA_URL}/rest/v1/ticket_messages?select=*&order=created_at.asc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
+      const mRes=await fetch(`${SUPA_URL}/rest/v1/ticket_messages?select=*&order=id.asc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
       const mData=await mRes.json();
       const msgMap={};
-      if(mData&&Array.isArray(mData)){mData.forEach(m=>{if(!msgMap[m.ticket_id])msgMap[m.ticket_id]=[];msgMap[m.ticket_id].push({uid:m.uid,uname:m.uname,role:m.role,text:m.text,ts:m.created_at,attachments:m.attachments?JSON.parse(m.attachments):[]});});}
+      if(mData&&Array.isArray(mData)){mData.forEach(m=>{if(!msgMap[m.ticket_id])msgMap[m.ticket_id]=[];msgMap[m.ticket_id].push({uid:m.uid||m.user_id,uname:m.uname||m.user_name,role:m.role||m.user_role,text:m.text,ts:m.ts||m.created_at,attachments:m.attachments?JSON.parse(m.attachments):[]});});}
       setTix(tData.map(t=>({...t,by:t.created_by,byName:t.by_name,byRole:t.by_role,at:t.created_at,afm:t.afm,cname:t.cname,reason:t.reason,reqId:t.req_id,agentName:t.agent_name,agentId:t.agent_id,msgs:msgMap[t.id]||[]})));
     }
     console.log("✅ Data loaded from Supabase");
