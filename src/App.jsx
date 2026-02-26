@@ -187,13 +187,13 @@ const expA5=(r,prov)=>{const p=PROVIDERS[prov];const html=`<!DOCTYPE html><html>
 const expXLSX=async(data,filename,sheetName)=>{
   try{
     const XLSX=await loadXLSX();
-    const h=["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Υπηρεσία","Κατάσταση","Partner","Agent","Ημ/νία","Πάγιο €","Γραμμές Κιν.","Γραμμές Σταθ.","Επιδότηση €"];
+    const h=["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Υπηρεσία","Κατάσταση","Partner","Agent","Ημ/νία Καταχ.","Ημ/νία Έναρξης","Διάρκεια","Ημ/νία Λήξης","Πάγιο €","Γραμμές Κιν.","Γραμμές Σταθ.","Επιδότηση €"];
     const rows=data.map(r=>{
       const lns=r.lines||[];
       const mobLns=lns.filter(l=>l.type==="mobile");
       const landLns=lns.filter(l=>l.type==="landline");
       const subTotal=lns.filter(l=>l.mode==="subsidy").reduce((s,l)=>s+(parseFloat(l.subsidy)||0),0);
-      return[r.id,PROVIDERS[r.prov]?.name||"",r.ln,r.fn,r.afm,r.mob,r.prog||lns.map(l=>l.prog).join(", "),r.svc||lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "),ST[r.status]?.l||"",r.partner,r.agentName,r.created,parseFloat(r.price)||0,mobLns.length,landLns.length,subTotal];
+      return[r.id,PROVIDERS[r.prov]?.name||"",r.ln,r.fn,r.afm,r.mob,r.prog||lns.map(l=>l.prog).join(", "),r.svc||lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "),ST[r.status]?.l||"",r.partner,r.agentName,fmtDate(r.created),fmtDate(r.startDate),r.duration?r.duration+" μήνες":"—",fmtDate(r.endDate),parseFloat(r.price)||0,mobLns.length,landLns.length,subTotal];
     });
     const ws=XLSX.utils.aoa_to_sheet([h,...rows]);
     // Auto-width columns
