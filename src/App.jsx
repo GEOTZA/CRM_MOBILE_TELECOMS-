@@ -112,6 +112,7 @@ const PROVIDERS = {
 };
 
 const ST = {
+  sent:{ l:"Απεστάλη",c:"#1565C0",bg:"#E3F2FD",i:"📤" },processing:{ l:"Σε Επεξεργασία",c:"#7B1FA2",bg:"#F3E5F5",i:"⚙️" },
   active:{ l:"Ενεργή",c:"#00A651",bg:"#E6F9EE",i:"✅" },pending:{ l:"Εκκρεμότητα",c:"#FF9800",bg:"#FFF3E0",i:"⏳" },
   cancelled:{ l:"Ακυρωμένη",c:"#E60000",bg:"#FFE6E6",i:"❌" },winback:{ l:"Win Back",c:"#9C27B0",bg:"#F3E5F5",i:"🔄" },
   counteroffer:{ l:"Αντιπρόταση",c:"#2196F3",bg:"#E3F2FD",i:"💬" },credit_check:{ l:"Πιστωτικός Έλεγχος",c:"#FF5722",bg:"#FBE9E7",i:"🔍" },
@@ -303,7 +304,7 @@ const loadFromSupa=async()=>{
     const rRes=await fetch(`${SUPA_URL}/rest/v1/requests?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const rData=await rRes.json();
     if(rData&&Array.isArray(rData)){
-      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
+      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,startDate:r.start_date||"",duration:r.duration||"24",endDate:r.end_date||"",lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
     }
     // Load tickets  
     const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -354,7 +355,7 @@ const saveReq=async(f)=>{
           }else if(doc.path){docMeta.push(doc);}
         }
       }
-      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"active",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
+      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"sent",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
       // Also set summary fields from first line for backwards compatibility
       if(nr.lines&&nr.lines.length>0){dbRow.prog=nr.lines[0].prog;dbRow.price=String(nr.lines.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2));dbRow.nlp=nr.lines[0].nlp==="port"?"Φορητότητα":"Νέα Γραμμή";}
       if(f.id){
@@ -692,7 +693,9 @@ const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{backgroun
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
 const emptyLine=()=>({id:Date.now()+Math.random(),type:"mobile",prog:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:""});
 const[form,setForm]=useState(()=>{
-  const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"active",sig:null,lines:[emptyLine()],agentId:"",agentName:"",prov:""};
+  const today=new Date().toISOString().slice(0,10);
+  const initEnd=(()=>{const d=new Date();d.setMonth(d.getMonth()+24);return d.toISOString().slice(0,10);})();
+  const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"sent",sig:null,lines:[emptyLine()],agentId:"",agentName:"",prov:"",startDate:today,duration:"24",endDate:initEnd};
   return ed?{...base,...ed}:base;
 });
 const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
@@ -832,6 +835,17 @@ return(
 <FL l="ΤΚ"><input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/></FL>
 </div></div>
 
+{/* ═══ ΗΜΕΡΟΜΗΝΙΕΣ ΣΥΜΒΟΛΑΙΟΥ ═══ */}
+<div style={{padding:"14px 20px",background:"#E8F5E9",borderLeft:"4px solid #2E7D32",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>📅 Διάρκεια Συμβολαίου</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8}}>
+<FL l="Ημ/νία Έναρξης"><input type="date" value={form.startDate||""} onChange={e=>{const sd=e.target.value;s("startDate",sd);if(sd&&form.duration){const d=new Date(sd);d.setMonth(d.getMonth()+parseInt(form.duration));s("endDate",d.toISOString().slice(0,10));}}} style={iS}/></FL>
+<FL l="Διάρκεια (μήνες)"><select value={form.duration||"24"} onChange={e=>{const dur=e.target.value;s("duration",dur);if(form.startDate&&dur){const d=new Date(form.startDate);d.setMonth(d.getMonth()+parseInt(dur));s("endDate",d.toISOString().slice(0,10));}}} style={iS}><option value="12">12 μήνες</option><option value="18">18 μήνες</option><option value="24">24 μήνες</option></select></FL>
+<FL l="Ημ/νία Λήξης"><input type="date" value={form.endDate||""} disabled style={{...iS,background:"#F5F5F5",fontWeight:700,color:"#C62828"}}/></FL>
+</div>
+{form.endDate&&<div style={{marginTop:6,fontSize:"0.76rem",color:"#2E7D32",fontWeight:600}}>📌 Λήξη συμβολαίου: {fmtDate(form.endDate)}</div>}
+</div>
+
 {/* ═══ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ ═══ */}
 <div style={{padding:"14px 20px",background:"#FFF8E1",borderLeft:"4px solid #FF6F00",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
@@ -933,6 +947,15 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>🚚 Courier</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
 {[["Courier",r.cour],["Διεύθυνση",r.cAddr],["Πόλη",r.cCity],["ΤΚ",r.cTk]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
+
+{/* CONTRACT DATES */}
+{(r.startDate||r.endDate)&&<div style={{padding:"12px 20px",background:"#E8F5E9",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📅 Διάρκεια Συμβολαίου</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
+<DF l="Ημ/νία Έναρξης" v={fmtDate(r.startDate)}/>
+<DF l="Διάρκεια" v={r.duration?r.duration+" μήνες":"—"}/>
+<DF l="Ημ/νία Λήξης" v={fmtDate(r.endDate)}/>
+</div></div>}
 
 {/* DOCUMENTS */}
 {(()=>{const docs=r.documents?typeof r.documents==="string"?JSON.parse(r.documents):r.documents:[];return docs.length>0?
