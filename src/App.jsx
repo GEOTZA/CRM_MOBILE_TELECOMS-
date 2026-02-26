@@ -349,13 +349,16 @@ const saveReq=async(f)=>{
             try{
               const ext=doc.name.split(".").pop()||"bin";
               const path=`${nr.id}/${Date.now()}.${ext}`;
-              await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":doc.file.type},body:doc.file});
+              const upRes=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":doc.file.type,"x-upsert":"true"},body:doc.file});
+              if(!upRes.ok){console.error("❌ Doc upload failed:",upRes.status,await upRes.text());}else{console.log("✅ Doc uploaded:",path);}
               docMeta.push({type:doc.type,name:doc.name,path,uploaded:new Date().toISOString()});
             }catch(e){console.error("Doc upload error:",e);}
           }else if(doc.path){docMeta.push(doc);}
         }
       }
       const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"sent",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
+      // Update local state with docMeta (correct paths for download)
+      if(docMeta.length>0){setReqs(p=>p.map(r=>r.id===nr.id?{...r,documents:docMeta}:r));}
       // Also set summary fields from first line for backwards compatibility
       if(nr.lines&&nr.lines.length>0){dbRow.prog=nr.lines[0].prog;dbRow.price=String(nr.lines.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2));dbRow.nlp=nr.lines[0].nlp==="port"?"Φορητότητα":"Νέα Γραμμή";}
       if(f.id){
