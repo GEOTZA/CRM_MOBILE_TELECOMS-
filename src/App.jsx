@@ -155,6 +155,7 @@ const AFM_DB=[
 
 const ts=()=>{const d=new Date();return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
 const td=()=>{const d=new Date();return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;};
+const fmtDate=(s)=>{if(!s)return"—";try{if(s.includes("/")){const p=s.split(" ")[0].split("/");return `${p[0].padStart(2,"0")}/${p[1].padStart(2,"0")}/${(p[2]||"").slice(-2)}`;}const d=new Date(s);if(isNaN(d))return s;return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;}catch(e){return s;}};
 const iS={padding:"8px 10px",border:"1.5px solid #E0E0E0",borderRadius:8,fontSize:"0.84rem",fontFamily:"'DM Sans',sans-serif",background:"white",width:"100%",outline:"none"};
 const B=(bg,c,x)=>({padding:"7px 16px",borderRadius:8,border:"none",background:bg,color:c,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontWeight:700,fontSize:"0.8rem",...x});
 const bg=(b,c)=>({display:"inline-flex",alignItems:"center",gap:3,padding:"2px 8px",borderRadius:5,fontSize:"0.7rem",fontWeight:600,background:b,color:c,whiteSpace:"nowrap"});
@@ -599,7 +600,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 <td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.prog}</td>
 <td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}><span style={{padding:"2px 8px",borderRadius:4,fontSize:"0.68rem",fontWeight:700,background:ST[r.status]?.bg,color:ST[r.status]?.c}}>{ST[r.status]?.i} {ST[r.status]?.l}</span></td>
 <td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.agentName}</td>
-<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{r.created?.slice(0,10)}</td>
+<td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0"}}>{fmtDate(r.created)}</td>
 <td style={{padding:"7px 8px",borderBottom:"1px solid #F0F0F0",fontWeight:700,color:"#2E7D32"}}>€{r.price}</td>
 </tr>)}
 </tbody></table>
