@@ -15,11 +15,12 @@ const loadXLSX=()=>new Promise((res,rej)=>{
 const downloadDoc=async(path,name)=>{
   try{
     console.log("📥 Downloading:",path);
-    // Use Supabase Storage authenticated endpoint
-    const res=await fetch(`${SUPA_URL}/storage/v1/object/authenticated/documents/${path}`,{
+    if(!path){alert("Δεν βρέθηκε αρχείο");return;}
+    // Method 1: Direct object endpoint (matches upload endpoint)
+    const res=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{
       headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}
     });
-    console.log("📥 Auth response:",res.status);
+    console.log("📥 Direct response:",res.status);
     if(res.ok){
       const blob=await res.blob();
       const url=URL.createObjectURL(blob);
@@ -27,27 +28,32 @@ const downloadDoc=async(path,name)=>{
       else{const a=document.createElement("a");a.href=url;a.download=name||"document";document.body.appendChild(a);a.click();document.body.removeChild(a);}
       return;
     }
-    // Fallback: try public endpoint
-    console.log("📥 Trying public...");
-    const pub=await fetch(`${SUPA_URL}/storage/v1/object/public/documents/${path}`);
-    if(pub.ok){
-      const blob=await pub.blob();
-      const url=URL.createObjectURL(blob);
-      window.open(url,"_blank");
-      return;
+    // Method 2: Signed URL (temporary access)
+    console.log("📥 Trying signed URL...");
+    const signRes=await fetch(`${SUPA_URL}/storage/v1/object/sign/documents/${path}`,{
+      method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},
+      body:JSON.stringify({expiresIn:3600})
+    });
+    if(signRes.ok){
+      const signData=await signRes.json();
+      if(signData.signedURL){window.open(`${SUPA_URL}/storage/v1${signData.signedURL}`,"_blank");return;}
     }
-    // Fallback 2: render endpoint  
-    console.log("📥 Trying render...");
-    const render=await fetch(`${SUPA_URL}/storage/v1/render/image/authenticated/documents/${path}`,{
+    // Method 3: Authenticated endpoint
+    console.log("📥 Trying authenticated...");
+    const authRes=await fetch(`${SUPA_URL}/storage/v1/object/authenticated/documents/${path}`,{
       headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}
     });
-    if(render.ok){
-      const blob=await render.blob();
+    if(authRes.ok){
+      const blob=await authRes.blob();
       window.open(URL.createObjectURL(blob),"_blank");
       return;
     }
-    const errText=await res.text();
-    throw new Error(res.status+": "+errText);
+    // Method 4: Public endpoint
+    console.log("📥 Trying public...");
+    const pub=await fetch(`${SUPA_URL}/storage/v1/object/public/documents/${path}`);
+    if(pub.ok){const blob=await pub.blob();window.open(URL.createObjectURL(blob),"_blank");return;}
+    console.error("❌ All download methods failed for:",path);
+    alert("Δεν ήταν δυνατή η λήψη του αρχείου. Ελέγξτε τα δικαιώματα του Storage bucket.");
   }catch(e){console.error("📥 Download error:",e);alert("Σφάλμα λήψης: "+e.message);}
 };
 
@@ -326,7 +332,8 @@ const loadFromSupa=async()=>{
 const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice")addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);if(req&&cu.role==="agent")users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`));};
 
 const saveReq=async(f)=>{
-  const id=f.id||`REQ-${String(reqs.length+1).padStart(5,"0")}`;
+  const nextNum=reqs.reduce((mx,r)=>{const m=r.id?.match(/REQ-(\d+)/);return m?Math.max(mx,parseInt(m[1])):mx;},0)+1;
+  const id=f.id||`REQ-${String(nextNum).padStart(5,"0")}`;
   const lns=f.lines||[];
   // When editing, preserve original agent from existing request
   const existingReq=f.id?reqs.find(r=>r.id===f.id):null;
@@ -336,24 +343,32 @@ const saveReq=async(f)=>{
     price:lns.length>0?String(lns.reduce((s,l)=>s+(parseFloat(l.price)||0),0).toFixed(2)):(f.price||"")
   };
   console.log("💾 saveReq:",{isEdit:!!f.id,id:nr.id,prov:nr.prov,formAgentId:f.agentId,finalAgentId:nr.agentId,status:nr.status,linesCount:lns.length});
+  // Extract File objects BEFORE any state changes (form unmounts on setVM)
+  const pendingDocs=(nr.docs||[]).filter(d=>d.file&&d.type).map(d=>({file:d.file,type:d.type,name:d.name||d.file.name}));
+  const existingDocs=(nr.docs||[]).filter(d=>!d.file&&d.path);
+  // Update UI immediately
   setReqs(p=>{const n=f.id?p.map(r=>r.id===f.id?nr:r):[nr,...p];console.log("📋 Reqs after save:",n.length);return n;});
   setVM("list");setSel(null);setSF("all");
   // Save to Supabase
   if(USE_SUPA){
     try{
       // Upload documents to Supabase Storage
-      const docMeta=[];
-      if(nr.docs&&nr.docs.length>0){
-        for(const doc of nr.docs){
-          if(doc.file&&doc.type){
+      const docMeta=[...existingDocs];
+      if(pendingDocs.length>0){
+        for(const doc of pendingDocs){
             try{
-              const ext=doc.name.split(".").pop()||"bin";
-              const path=`${nr.id}/${Date.now()}.${ext}`;
+              const ext=(doc.name||"file").split(".").pop()||"bin";
+              const path=`${nr.id}/${Date.now()}_${Math.random().toString(36).slice(2,6)}.${ext}`;
+              console.log("📤 Uploading doc:",path,"type:",doc.file.type,"size:",doc.file.size);
               const upRes=await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":doc.file.type,"x-upsert":"true"},body:doc.file});
-              if(!upRes.ok){console.error("❌ Doc upload failed:",upRes.status,await upRes.text());}else{console.log("✅ Doc uploaded:",path);}
-              docMeta.push({type:doc.type,name:doc.name,path,uploaded:new Date().toISOString()});
+              if(upRes.ok){
+                console.log("✅ Doc uploaded:",path);
+                docMeta.push({type:doc.type,name:doc.name,path,uploaded:new Date().toISOString()});
+              }else{
+                const errTxt=await upRes.text();
+                console.error("❌ Doc upload failed:",upRes.status,errTxt);
+              }
             }catch(e){console.error("Doc upload error:",e);}
-          }else if(doc.path){docMeta.push(doc);}
         }
       }
       const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"sent",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
