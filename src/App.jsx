@@ -163,6 +163,7 @@ const AFM_DB=[
 const ts=()=>{const d=new Date();return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;};
 const td=()=>{const d=new Date();return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}`;};
 const fmtDate=(s)=>{if(!s)return"—";try{if(s.includes("/")){const p=s.split(" ")[0].split("/");return `${p[0].padStart(2,"0")}/${p[1].padStart(2,"0")}/${(p[2]||"").slice(-2)}`;}const d=new Date(s);if(isNaN(d))return s;return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;}catch(e){return s;}};
+const fmtDateFull=(s)=>{if(!s)return"";try{const d=new Date(s);if(isNaN(d))return s;return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;}catch(e){return s;}};
 const iS={padding:"8px 10px",border:"1.5px solid #E0E0E0",borderRadius:8,fontSize:"0.84rem",fontFamily:"'DM Sans',sans-serif",background:"white",width:"100%",outline:"none"};
 const B=(bg,c,x)=>({padding:"7px 16px",borderRadius:8,border:"none",background:bg,color:c,cursor:"pointer",fontFamily:"'Outfit',sans-serif",fontWeight:700,fontSize:"0.8rem",...x});
 const bg=(b,c)=>({display:"inline-flex",alignItems:"center",gap:3,padding:"2px 8px",borderRadius:5,fontSize:"0.7rem",fontWeight:600,background:b,color:c,whiteSpace:"nowrap"});
@@ -193,13 +194,13 @@ const expA5=(r,prov)=>{const p=PROVIDERS[prov];const html=`<!DOCTYPE html><html>
 const expXLSX=async(data,filename,sheetName)=>{
   try{
     const XLSX=await loadXLSX();
-    const h=["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Υπηρεσία","Κατάσταση","Partner","Agent","Ημ/νία Καταχ.","Ημ/νία Έναρξης","Διάρκεια","Ημ/νία Λήξης","Πάγιο €","Γραμμές Κιν.","Γραμμές Σταθ.","Επιδότηση €"];
+    const h=["ID","Πάροχος","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πρόγραμμα","Υπηρεσία","Κατάσταση","Partner","Agent","Ημ/νία Καταχ.","Ημ/νία Έναρξης","Διάρκεια","Ημ/νία Λήξης","Ημ/νία Πίστωσης","Πάγιο €","Γραμμές Κιν.","Γραμμές Σταθ.","Επιδότηση €"];
     const rows=data.map(r=>{
       const lns=r.lines||[];
       const mobLns=lns.filter(l=>l.type==="mobile");
       const landLns=lns.filter(l=>l.type==="landline");
       const subTotal=lns.filter(l=>l.mode==="subsidy").reduce((s,l)=>s+(parseFloat(l.subsidy)||0),0);
-      return[r.id,PROVIDERS[r.prov]?.name||"",r.ln,r.fn,r.afm,r.mob,r.prog||lns.map(l=>l.prog).join(", "),r.svc||lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "),ST[r.status]?.l||"",r.partner,r.agentName,fmtDate(r.created),fmtDate(r.startDate),r.duration?r.duration+" μήνες":"—",fmtDate(r.endDate),parseFloat(r.price)||0,mobLns.length,landLns.length,subTotal];
+      return[r.id,PROVIDERS[r.prov]?.name||"",r.ln,r.fn,r.afm,r.mob,r.prog||lns.map(l=>l.prog).join(", "),r.svc||lns.map(l=>l.type==="mobile"?"Κινητή":"Σταθερή").join(", "),ST[r.status]?.l||"",r.partner,r.agentName,fmtDate(r.created),fmtDate(r.startDate),r.duration?r.duration+" μήνες":"—",fmtDate(r.endDate),fmtDate(r.creditDate),parseFloat(r.price)||0,mobLns.length,landLns.length,subTotal];
     });
     const ws=XLSX.utils.aoa_to_sheet([h,...rows]);
     // Auto-width columns
@@ -310,7 +311,7 @@ const loadFromSupa=async()=>{
     const rRes=await fetch(`${SUPA_URL}/rest/v1/requests?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const rData=await rRes.json();
     if(rData&&Array.isArray(rData)){
-      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,pendR:r.pend_r,canR:r.can_r,prov:r.provider,startDate:r.start_date||"",duration:r.duration||"24",endDate:r.end_date||"",lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
+      setReqs(rData.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,billAddr:r.bill_addr||"",billCity:r.bill_city||"",billTk:r.bill_tk||"",showBillAddr:!!(r.bill_addr),pendR:r.pend_r,canR:r.can_r,prov:r.provider,startDate:r.start_date||"",duration:r.duration||"24",endDate:r.end_date||"",creditDate:r.credit_date||"",lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
     }
     // Load tickets  
     const tRes=await fetch(`${SUPA_URL}/rest/v1/tickets?select=*&order=created_at.desc`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -371,7 +372,7 @@ const saveReq=async(f)=>{
             }catch(e){console.error("Doc upload error:",e);}
         }
       }
-      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"sent",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
+      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"sent",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,bill_addr:nr.billAddr||"",bill_city:nr.billCity||"",bill_tk:nr.billTk||"",notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",credit_date:nr.creditDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
       // Update local state with docMeta (correct paths for download)
       if(docMeta.length>0){setReqs(p=>p.map(r=>r.id===nr.id?{...r,documents:docMeta}:r));}
       // Also set summary fields from first line for backwards compatibility
@@ -552,7 +553,7 @@ return(
 {tab==="dash"&&(vm==="form"||vm==="edit")&&<ReqForm pr={pr} prov={prov} onSave={saveReq} onCancel={()=>setVM("list")} ed={vm==="edit"?sel:null} db={afmDb} P={P} cu={cu}/>}
 
 {/* DETAIL */}
-{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
+{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
 {/* ═══ SEARCH ═══ */}
@@ -709,11 +710,11 @@ const AdmBk=({onClick})=><button onClick={onClick} style={{padding:"8px 16px",bo
 const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{background:"white",borderRadius:12,padding:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderLeft:"4px solid "+cl,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";}}><div style={{fontSize:"1.5rem",marginBottom:4}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1rem"}}>{ti}</div><p style={{fontSize:"0.76rem",color:"#888",marginTop:2}}>{ds}</p>{ct!==undefined&&<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.4rem",color:cl,marginTop:4}}>{ct}</div>}</div>;
 
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
-const emptyLine=()=>({id:Date.now()+Math.random(),type:"mobile",prog:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:""});
+const emptyLine=()=>({id:Date.now()+Math.random(),type:"mobile",prog:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""});
 const[form,setForm]=useState(()=>{
   const today=new Date().toISOString().slice(0,10);
   const initEnd=(()=>{const d=new Date();d.setMonth(d.getMonth()+24);return d.toISOString().slice(0,10);})();
-  const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",notes:"",pendR:"",canR:"",status:"sent",sig:null,lines:[emptyLine()],agentId:"",agentName:"",prov:"",startDate:"",duration:"24",endDate:""};
+  const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,notes:"",pendR:"",canR:"",status:"sent",sig:null,lines:[emptyLine()],agentId:"",agentName:"",prov:"",startDate:"",duration:"24",endDate:"",creditDate:""};
   return ed?{...base,...ed}:base;
 });
 const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
@@ -815,7 +816,29 @@ return(
 
 {isMob&&<FL l="Αριθμός Κινητού"><input type="tel" maxLength={10} value={ln.mobNum} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,10);updLine(i,"mobNum",v)}} placeholder="69xxxxxxxx" style={iS}/></FL>}
 
-{!isMob&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
+{!isMob&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/[^\d]/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
+
+{!isMob&&<>
+<div style={{marginTop:8,padding:10,background:"#E3F2FD",borderRadius:8,border:"1px solid #90CAF9"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<span style={{fontWeight:700,fontSize:"0.82rem",color:"#1565C0"}}>📍 Διεύθυνση Εγκατάστασης</span>
+<div style={{display:"flex",gap:4}}>
+<button onClick={()=>{updLine(i,"instAddr",form.addr);updLine(i,"instCity",form.city);updLine(i,"instTk",form.tk);}} style={{padding:"3px 8px",borderRadius:4,border:"1px solid #1565C0",background:"white",color:"#1565C0",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>📋 Κύρια</button>
+{form.billAddr&&<button onClick={()=>{updLine(i,"instAddr",form.billAddr);updLine(i,"instCity",form.billCity);updLine(i,"instTk",form.billTk);}} style={{padding:"3px 8px",borderRadius:4,border:"1px solid #FF6F00",background:"white",color:"#FF6F00",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>📋 Λογ/σμών</button>}
+</div>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 120px 80px",gap:6}}>
+<FL l="Διεύθυνση"><input value={ln.instAddr||""} onChange={e=>updLine(i,"instAddr",e.target.value)} placeholder="Οδός & αριθμός" style={iS}/></FL>
+<FL l="Πόλη"><input value={ln.instCity||""} onChange={e=>updLine(i,"instCity",e.target.value)} style={iS}/></FL>
+<FL l="ΤΚ"><input value={ln.instTk||""} onChange={e=>updLine(i,"instTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} maxLength={5} style={iS}/></FL>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:6}}>
+<FL l="📌 Latitude"><input type="text" value={ln.instLat||""} onChange={e=>updLine(i,"instLat",e.target.value)} placeholder="π.χ. 37.9838" style={iS}/></FL>
+<FL l="📌 Longitude"><input type="text" value={ln.instLng||""} onChange={e=>updLine(i,"instLng",e.target.value)} placeholder="π.χ. 23.7275" style={iS}/></FL>
+</div>
+{ln.instLat&&ln.instLng&&<a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{display:"inline-block",marginTop:4,fontSize:"0.72rem",color:"#1565C0",fontWeight:600}}>🗺️ Προβολή στο χάρτη</a>}
+</div>
+</>}
 
 </div></div>);})}
 
@@ -853,16 +876,34 @@ return(
 <FL l="ΤΚ"><input value={form.cTk} onChange={e=>s("cTk",e.target.value)} style={iS}/></FL>
 </div></div>
 
+{/* ═══ ΔΙΕΥΘΥΝΣΗ ΑΠΟΣΤΟΛΗΣ ΛΟΓΑΡΙΑΣΜΩΝ ═══ */}
+{form.showBillAddr&&<div style={{padding:"14px 20px",background:"#F3E5F5",borderLeft:"4px solid #7B1FA2",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>📬 Διεύθυνση Αποστολής Λογαριασμών</div>
+<button onClick={()=>{s("billAddr",form.addr);s("billCity",form.city);s("billTk",form.tk);}} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #7B1FA2",background:"white",color:"#7B1FA2",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>📋 Αντιγραφή από κύρια</button>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"1fr 160px 100px",gap:8}}>
+<FL l="Διεύθυνση"><input value={form.billAddr||""} onChange={e=>s("billAddr",e.target.value)} placeholder="Οδός & αριθμός" style={iS}/></FL>
+<FL l="Πόλη"><input value={form.billCity||""} onChange={e=>s("billCity",e.target.value)} style={iS}/></FL>
+<FL l="ΤΚ"><input value={form.billTk||""} onChange={e=>s("billTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} maxLength={5} style={iS}/></FL>
+</div>
+</div>}
+<div style={{padding:"6px 20px",borderBottom:"1px solid #F0F0F0"}}>
+{!form.showBillAddr?<button onClick={()=>s("showBillAddr",true)} style={{padding:"5px 14px",borderRadius:6,border:"1px dashed #7B1FA2",background:"#F3E5F5",color:"#7B1FA2",cursor:"pointer",fontSize:"0.76rem",fontWeight:600}}>➕ Διαφορετική διεύθυνση λογαριασμών</button>
+:<button onClick={()=>{s("showBillAddr",false);s("billAddr","");s("billCity","");s("billTk","");}} style={{padding:"5px 14px",borderRadius:6,border:"1px dashed #C62828",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontSize:"0.76rem",fontWeight:600}}>✖ Αφαίρεση διεύθυνσης λογαριασμών</button>}
+</div>
+
 {/* ═══ ΗΜΕΡΟΜΗΝΙΕΣ ΣΥΜΒΟΛΑΙΟΥ ═══ */}
 <div style={{padding:"14px 20px",background:"#E8F5E9",borderLeft:"4px solid #2E7D32",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>📅 Διάρκεια Συμβολαίου</div>
 {!form.startDate&&form.status!=="active"&&<div style={{background:"#FFF3E0",borderRadius:6,padding:8,marginBottom:8,fontSize:"0.76rem",color:"#E65100",fontWeight:600}}>⏳ Η ημ/νία έναρξης θα οριστεί αυτόματα κατά την ενεργοποίηση</div>}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8}}>
-<FL l="Ημ/νία Έναρξης">{(cu.role==="admin"||cu.role==="director"||cu.role==="backoffice")?<input type="text" value={form.startDate?fmtDate(form.startDate):""} placeholder="ΗΗ/ΜΜ/ΕΕ — Αυτόματα στην ενεργοποίηση" onFocus={e=>{if(form.startDate){const p=form.startDate.split("-");e.target.value=`${p[2]}/${p[1]}/${p[0]}`;}}} onChange={e=>{let v=e.target.value.replace(/[^\d/]/g,"").slice(0,10);e.target.value=v;const parts=v.split("/");if(parts.length===3&&parts[2].length>=4){const[dd,mm,yyyy]=parts;const iso=`${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;const testD=new Date(iso);if(!isNaN(testD)&&testD.toISOString().slice(0,10)===iso){s("startDate",iso);if(form.duration){const d=new Date(iso);d.setMonth(d.getMonth()+parseInt(form.duration));s("endDate",d.toISOString().slice(0,10));}}}}} style={iS}/>:<div style={{...iS,background:"#F5F5F5",display:"flex",alignItems:"center",minHeight:34,color:form.startDate?"#333":"#999"}}>{form.startDate?fmtDate(form.startDate):"Αυτόματα στην ενεργοποίηση"}</div>}</FL>
+<FL l="Ημ/νία Έναρξης">{(cu.role==="admin"||cu.role==="director"||cu.role==="backoffice")?<input type="text" value={form.startDate?fmtDateFull(form.startDate):""} placeholder="ΗΗ/ΜΜ/ΕΕΕΕ" onChange={e=>{let v=e.target.value.replace(/[^\d/]/g,"").slice(0,10);const parts=v.split("/");if(parts.length===3&&parts[2].length===4){const[dd,mm,yyyy]=parts;const iso=`${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;const testD=new Date(iso);if(!isNaN(testD)&&testD.toISOString().slice(0,10)===iso){s("startDate",iso);if(form.duration){const d2=new Date(iso);d2.setMonth(d2.getMonth()+parseInt(form.duration));s("endDate",d2.toISOString().slice(0,10));}}}}} style={iS}/>:<div style={{...iS,background:"#F5F5F5",display:"flex",alignItems:"center",minHeight:34,color:form.startDate?"#333":"#999"}}>{form.startDate?fmtDate(form.startDate):"Αυτόματα στην ενεργοποίηση"}</div>}</FL>
 <FL l="Διάρκεια (μήνες)"><select value={form.duration||"24"} onChange={e=>{const dur=e.target.value;s("duration",dur);if(form.startDate&&dur){const d=new Date(form.startDate);d.setMonth(d.getMonth()+parseInt(dur));s("endDate",d.toISOString().slice(0,10));}}} style={iS}><option value="12">12 μήνες</option><option value="18">18 μήνες</option><option value="24">24 μήνες</option></select></FL>
 <FL l="Ημ/νία Λήξης"><div style={{...iS,background:form.endDate?"#FFEBEE":"#F5F5F5",fontWeight:700,color:form.endDate?"#C62828":"#999",display:"flex",alignItems:"center",minHeight:34,borderRadius:6,padding:"0 10px"}}>{form.endDate?fmtDate(form.endDate):"—"}</div></FL>
 </div>
 {form.endDate&&<div style={{marginTop:6,fontSize:"0.76rem",color:"#2E7D32",fontWeight:600}}>📌 Λήξη συμβολαίου: {fmtDate(form.endDate)}</div>}
+{form.creditDate&&<div style={{marginTop:4,fontSize:"0.76rem",color:"#00695C",fontWeight:600}}>💳 Ημ/νία πίστωσης: {fmtDate(form.creditDate)}</div>}
 </div>
 
 {/* ═══ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ ═══ */}
@@ -894,7 +935,7 @@ return(
 {/* Status */}
 <div style={{padding:"14px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-{P.status&&<FL l="Κατάσταση"><select value={form.status} onChange={e=>{const ns=e.target.value;s("status",ns);if(ns==="active"&&!form.startDate){const td=new Date().toISOString().slice(0,10);s("startDate",td);const dur=parseInt(form.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);s("endDate",ed.toISOString().slice(0,10));}}} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></FL>}
+{P.status&&<FL l="Κατάσταση"><select value={form.status} onChange={e=>{const ns=e.target.value;s("status",ns);if(ns==="active"&&!form.startDate){const td=new Date().toISOString().slice(0,10);s("startDate",td);const dur=parseInt(form.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);s("endDate",ed.toISOString().slice(0,10));}if(ns==="credited"&&!form.creditDate){s("creditDate",new Date().toISOString().slice(0,10));}}} style={{...iS,background:ST[form.status]?.bg,color:ST[form.status]?.c,fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></FL>}
 <FL l="Εκκρεμότητα"><select value={form.pendR} onChange={e=>s("pendR",e.target.value)} style={iS}><option value="">—</option>{PEND_R.map(x=><option key={x}>{x}</option>)}</select></FL>
 <FL l="Ακύρωση"><select value={form.canR} onChange={e=>s("canR",e.target.value)} style={iS}><option value="">—</option>{CANCEL_R.map(x=><option key={x}>{x}</option>)}</select></FL>
 </div>
@@ -951,6 +992,8 @@ return(
 <DF l="Τρόπος" v={ln.mode==="simo"?"SIM Only":"Επιδότηση"+(ln.subsidy?" €"+ln.subsidy:"")}/>
 <DF l="Τύπος" v={ln.nlp==="port"?"Φορητότητα"+(ln.fromProv?" από "+ln.fromProv:""):"Νέα Γραμμή"}/>
 {ln.mobNum&&<DF l="Κινητό" v={ln.mobNum}/>}{ln.landNum&&<DF l="Σταθερό" v={ln.landNum}/>}
+{ln.instAddr&&<DF l="📍 Εγκατάσταση" v={`${ln.instAddr}, ${ln.instCity||""} ${ln.instTk||""}`}/>}
+{(ln.instLat&&ln.instLng)&&<DF l="📌 Συντεταγμένες" v={<a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{color:"#1565C0",textDecoration:"underline"}}>{ln.instLat}, {ln.instLng} 🗺️</a>}/>}
 </div></div>))
 :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
 {[["Πρόγραμμα",r.prog],["Τιμή",r.price?"€"+r.price:"—"],["Τύπος",r.lt]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div>}
@@ -967,13 +1010,21 @@ return(
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
 {[["Courier",r.cour],["Διεύθυνση",r.cAddr],["Πόλη",r.cCity],["ΤΚ",r.cTk]].map(([l,v])=><DF key={l} l={l} v={v}/>)}</div></div>
 
+{/* BILLING ADDRESS */}
+{r.billAddr&&<div style={{padding:"12px 20px",background:"#F3E5F5",borderBottom:"1px solid #F0F0F0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📬 Διεύθυνση Αποστολής Λογαριασμών</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
+<DF l="Διεύθυνση" v={r.billAddr}/><DF l="Πόλη" v={r.billCity}/><DF l="ΤΚ" v={r.billTk}/>
+</div></div>}
+
 {/* CONTRACT DATES */}
-{(r.startDate||r.endDate)&&<div style={{padding:"12px 20px",background:"#E8F5E9",borderBottom:"1px solid #F0F0F0"}}>
+{(r.startDate||r.endDate||r.creditDate||r.duration)&&<div style={{padding:"12px 20px",background:"#E8F5E9",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📅 Διάρκεια Συμβολαίου</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:6}}>
 <DF l="Ημ/νία Έναρξης" v={fmtDate(r.startDate)}/>
 <DF l="Διάρκεια" v={r.duration?r.duration+" μήνες":"—"}/>
 <DF l="Ημ/νία Λήξης" v={fmtDate(r.endDate)}/>
+{r.creditDate&&<DF l="💳 Ημ/νία Πίστωσης" v={fmtDate(r.creditDate)}/>}
 </div></div>}
 
 {/* DOCUMENTS */}
@@ -1743,7 +1794,7 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px"}}>{r.ln} {r.fn}</td>
 <td style={{padding:"7px 10px",fontSize:"0.78rem"}}>{r.afm}</td>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.prog}</td>
-<td style={{padding:"7px 10px"}}><select value={r.status} onChange={async e=>{const ns=e.target.value;const updates={status:ns};if(ns==="active"&&!r.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(r.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.endDate=ed.toISOString().slice(0,10);}setReqs(p=>p.map(x=>x.id===r.id?{...x,...updates}:x));if(USE_SUPA){try{const dbUp={status:ns};if(updates.startDate){dbUp.start_date=updates.startDate;dbUp.end_date=updates.endDate;}await supa.from("requests").update(dbUp).eq("id",r.id);}catch(e2){console.error("❌",e2);}}}} style={{...iS,width:155,padding:"3px 6px",fontSize:"0.72rem",background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c||"#333",fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
+<td style={{padding:"7px 10px"}}><select value={r.status} onChange={async e=>{const ns=e.target.value;const updates={status:ns};if(ns==="active"&&!r.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(r.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.endDate=ed.toISOString().slice(0,10);}if(ns==="credited"&&!r.creditDate){updates.creditDate=new Date().toISOString().slice(0,10);}setReqs(p=>p.map(x=>x.id===r.id?{...x,...updates}:x));if(USE_SUPA){try{const dbUp={status:ns};if(updates.startDate){dbUp.start_date=updates.startDate;dbUp.end_date=updates.endDate;}if(updates.creditDate){dbUp.credit_date=updates.creditDate;}await supa.from("requests").update(dbUp).eq("id",r.id);}catch(e2){console.error("❌",e2);}}}} style={{...iS,width:155,padding:"3px 6px",fontSize:"0.72rem",background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c||"#333",fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.agentName}</td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
 
