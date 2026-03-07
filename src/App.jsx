@@ -118,6 +118,7 @@ const PROVIDERS = {
 };
 
 const ST = {
+  draft:{ l:"Αποθηκευμένη",c:"#78909C",bg:"#ECEFF1",i:"💾" },
   sent:{ l:"Απεστάλη",c:"#1565C0",bg:"#E3F2FD",i:"📤" },processing:{ l:"Σε Επεξεργασία",c:"#7B1FA2",bg:"#F3E5F5",i:"⚙️" },
   active:{ l:"Ενεργή",c:"#00A651",bg:"#E6F9EE",i:"✅" },pending:{ l:"Εκκρεμότητα",c:"#FF9800",bg:"#FFF3E0",i:"⏳" },
   cancelled:{ l:"Ακυρωμένη",c:"#E60000",bg:"#FFE6E6",i:"❌" },winback:{ l:"Win Back",c:"#9C27B0",bg:"#F3E5F5",i:"🔄" },
@@ -240,7 +241,7 @@ const P=cu?PERMS[cu.role]:{};const pr=PROVIDERS[prov];const rl=cu?ROLES[cu.role]
 const addN=(uid,txt)=>setNotifs(p=>[{id:`N${Date.now()}`,uid,txt,ts:ts(),read:0},...p]);
 const myN=notifs.filter(n=>n.uid===cu?.id&&!n.read);
 
-const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);if(P.viewAll)return r;if(P.ownAgents)return r.filter(x=>x.partner===cu.partner);if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
+const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);/* Hide drafts from everyone except the creator */r=r.filter(x=>x.status!=="draft"||x.agentId===cu.id);if(P.viewAll)return r;if(P.ownAgents)return r.filter(x=>x.partner===cu.partner);if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
 const vr=visReqs();const fr=vr.filter(r=>sf==="all"||r.status===sf);
 const stats={};Object.keys(ST).forEach(k=>{stats[k]=vr.filter(r=>r.status===k).length});stats.total=vr.length;
 
@@ -372,7 +373,7 @@ const saveReq=async(f)=>{
             }catch(e){console.error("Doc upload error:",e);}
         }
       }
-      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"sent",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,bill_addr:nr.billAddr||"",bill_city:nr.billCity||"",bill_tk:nr.billTk||"",notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",credit_date:nr.creditDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
+      const dbRow={id:nr.id,provider:prov,ln:nr.ln,fn:nr.fn,fat:nr.fat,bd:nr.bd,adt:nr.adt,ph:nr.ph,mob:nr.mob,em:nr.em,afm:nr.afm,doy:nr.doy,tk:nr.tk,addr:nr.addr,city:nr.city,partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,svc:nr.svc,prog:nr.prog,lt:nr.lt,nlp:nr.nlp,price:nr.price,status:nr.status||"draft",pend_r:nr.pendR,can_r:nr.canR,courier:nr.cour,c_addr:nr.cAddr,c_city:nr.cCity,c_tk:nr.cTk,bill_addr:nr.billAddr||"",bill_city:nr.billCity||"",bill_tk:nr.billTk||"",notes:nr.notes,sig:nr.sig,created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",credit_date:nr.creditDate||"",lines:JSON.stringify(nr.lines||[]),documents:JSON.stringify(docMeta)};
       // Update local state with docMeta (correct paths for download)
       if(docMeta.length>0){setReqs(p=>p.map(r=>r.id===nr.id?{...r,documents:docMeta}:r));}
       // Also set summary fields from first line for backwards compatibility
@@ -497,6 +498,7 @@ return(
 ["search","🔍","Αναζήτηση",true],
 ["tix","🎫","Αιτήματα",tixEnabled||cu?.role==="admin"],
 ["offers","🏷️","Προσφορές",true],
+["tools","🛠️","Εργαλεία",true],
 ["reports","📈","Reports",P.reports],
 ["users","👥","Χρήστες",P.users],
 ["admin","👑","Admin",P.adminPanel]
@@ -560,7 +562,8 @@ return(
 {tab==="search"&&(()=>{
 const ss=v=>e=>setSrch(p=>({...p,[v]:e.target.value}));
 const clear=()=>setSrch({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
-const allR=P.viewAll?reqs.filter(x=>x.prov===prov):P.ownAgents?reqs.filter(x=>x.prov===prov&&x.partner===cu.partner):reqs.filter(x=>x.prov===prov&&x.agentId===cu.id);
+const allR0=P.viewAll?reqs.filter(x=>x.prov===prov):P.ownAgents?reqs.filter(x=>x.prov===prov&&x.partner===cu.partner):reqs.filter(x=>x.prov===prov&&x.agentId===cu.id);
+const allR=allR0.filter(x=>x.status!=="draft"||x.agentId===cu.id);
 let res=allR;
 if(srch.afm)res=res.filter(r=>(r.afm||"").includes(srch.afm));
 if(srch.adt)res=res.filter(r=>(r.adt||"").toLowerCase().includes(srch.adt.toLowerCase()));
@@ -686,6 +689,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 
 {/* ═══ REPORTS ═══ */}
 {tab==="offers"&&<OffersPanel offers={offers} setOffers={setOffers} cu={cu} pr={pr}/>}
+{tab==="tools"&&<ToolsPanel/>}
 {tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport} expXLSX={expXLSX}/>}
 
 {/* SYSTEM */}
@@ -714,7 +718,7 @@ const emptyLine=()=>({id:Date.now()+Math.random(),type:"mobile",prog:"",price:""
 const[form,setForm]=useState(()=>{
   const today=new Date().toISOString().slice(0,10);
   const initEnd=(()=>{const d=new Date();d.setMonth(d.getMonth()+24);return d.toISOString().slice(0,10);})();
-  const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,notes:"",pendR:"",canR:"",status:"sent",sig:null,lines:[emptyLine()],agentId:"",agentName:"",prov:"",startDate:"",duration:"24",endDate:"",creditDate:""};
+  const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,notes:"",pendR:"",canR:"",status:"draft",sig:null,lines:[emptyLine()],agentId:"",agentName:"",prov:"",startDate:"",duration:"24",endDate:"",creditDate:""};
   return ed?{...base,...ed}:base;
 });
 const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
@@ -947,8 +951,9 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>✍️ Υπογραφή</div>
 <SigPad onSave={d=>s("sig",d)} ex={form.sig}/></div>
 
-<div style={{padding:16,display:"flex",gap:8,justifyContent:"center",background:"#FAFAFA"}}>
-<button onClick={()=>onSave(form)} style={B("#4CAF50","white",{padding:"10px 32px",fontSize:"0.88rem"})}>💾 Αποθήκευση</button>
+<div style={{padding:16,display:"flex",gap:8,justifyContent:"center",background:"#FAFAFA",flexWrap:"wrap"}}>
+<button onClick={()=>onSave({...form,status:"draft"})} style={B("#78909C","white",{padding:"10px 32px",fontSize:"0.88rem"})}>💾 Αποθήκευση</button>
+<button onClick={()=>onSave({...form,status:"sent"})} style={B("#1565C0","white",{padding:"10px 32px",fontSize:"0.88rem"})}>📤 Αποστολή</button>
 <button onClick={onCancel} style={B("#FF5722","white",{padding:"10px 32px",fontSize:"0.88rem"})}>✖ Ακύρωση</button>
 </div></div>);}
 
@@ -962,6 +967,7 @@ return(
 <div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.15rem"}}>{pr.icon} {r.id}</h2><div style={{opacity:0.85,fontSize:"0.8rem"}}>{r.ln} {r.fn} • {r.created}</div></div>
 <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
 <span style={bg(s.bg,s.c)}>{s.i} {s.l}</span>
+{r.status==="draft"&&r.agentId===cu.id&&<button onClick={()=>onSC("sent")} style={B("#1565C0","white",{})}>📤 Αποστολή</button>}
 {P.edit&&<button onClick={onEdit} style={B("rgba(255,255,255,0.2)","white",{})}>✏️</button>}
 <button onClick={()=>expPDF(r,prov)} style={B("rgba(255,255,255,0.2)","white",{})}>PDF</button>
 <button onClick={()=>expA5(r,prov)} style={B("rgba(255,255,255,0.2)","white",{})}>A5</button>
@@ -1317,6 +1323,138 @@ setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Απ
 </div></div>}
 
 </div>);}
+
+// ═══ TOOLS PANEL ═══
+function ToolsPanel(){
+const[convFile,setConvFile]=useState(null);
+const[convStatus,setConvStatus]=useState("");
+const[mergeFiles,setMergeFiles]=useState([]);
+const[mergeStatus,setMergeStatus]=useState("");
+const[dragOver,setDragOver]=useState(false);
+
+const loadPdfLib=async()=>{
+  if(window.PDFLib)return window.PDFLib;
+  return new Promise((res,rej)=>{const s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js";s.onload=()=>res(window.PDFLib);s.onerror=rej;document.head.appendChild(s);});
+};
+
+const convertToPdf=async()=>{
+  if(!convFile)return;
+  setConvStatus("Μετατροπή...");
+  try{
+    const PDFLib=await loadPdfLib();
+    const pdfDoc=await PDFLib.PDFDocument.create();
+    if(convFile.type.startsWith("image/")){
+      const imgBytes=await convFile.arrayBuffer();
+      let img;
+      if(convFile.type==="image/png")img=await pdfDoc.embedPng(imgBytes);
+      else img=await pdfDoc.embedJpg(imgBytes);
+      const dims=img.scale(1);
+      const page=pdfDoc.addPage([dims.width,dims.height]);
+      page.drawImage(img,{x:0,y:0,width:dims.width,height:dims.height});
+    }else{
+      // For other files: read as text and place on PDF
+      const txt=await convFile.text();
+      const page=pdfDoc.addPage([595,842]);// A4
+      const font=await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+      const lines=txt.split("\n");
+      let y=800;
+      for(const line of lines){
+        if(y<40){const np=pdfDoc.addPage([595,842]);y=800;}
+        page.drawText(line.slice(0,90),{x:40,y,size:10,font});
+        y-=14;
+      }
+    }
+    const pdfBytes=await pdfDoc.save();
+    const blob=new Blob([pdfBytes],{type:"application/pdf"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=convFile.name.replace(/\.[^.]+$/,"")+".pdf";
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setConvStatus("✅ Επιτυχής μετατροπή!");
+  }catch(e){console.error("Convert error:",e);setConvStatus("❌ Σφάλμα: "+e.message);}
+};
+
+const mergePdfs=async()=>{
+  if(mergeFiles.length<2){setMergeStatus("Χρειάζονται τουλάχιστον 2 αρχεία");return;}
+  setMergeStatus("Συγχώνευση...");
+  try{
+    const PDFLib=await loadPdfLib();
+    const merged=await PDFLib.PDFDocument.create();
+    for(const file of mergeFiles){
+      const bytes=await file.arrayBuffer();
+      if(file.type==="application/pdf"){
+        const src=await PDFLib.PDFDocument.load(bytes);
+        const pages=await merged.copyPages(src,src.getPageIndices());
+        pages.forEach(p=>merged.addPage(p));
+      }else if(file.type.startsWith("image/")){
+        let img;
+        if(file.type==="image/png")img=await merged.embedPng(bytes);
+        else img=await merged.embedJpg(bytes);
+        const dims=img.scale(1);
+        const maxW=595,maxH=842;
+        const scale=Math.min(maxW/dims.width,maxH/dims.height,1);
+        const page=merged.addPage([dims.width*scale,dims.height*scale]);
+        page.drawImage(img,{x:0,y:0,width:dims.width*scale,height:dims.height*scale});
+      }
+    }
+    const pdfBytes=await merged.save();
+    const blob=new Blob([pdfBytes],{type:"application/pdf"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=`Merged_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setMergeStatus(`✅ Συγχώνευση ${mergeFiles.length} αρχείων!`);
+  }catch(e){console.error("Merge error:",e);setMergeStatus("❌ Σφάλμα: "+e.message);}
+};
+
+const addMergeFiles=(files)=>{
+  const arr=Array.from(files).filter(f=>f.type==="application/pdf"||f.type.startsWith("image/"));
+  setMergeFiles(p=>[...p,...arr].slice(0,10));
+};
+
+return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:20}}>🛠️ Εργαλεία PDF</h1>
+
+{/* Convert to PDF */}
+<div style={{background:"white",borderRadius:12,padding:20,marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",border:"1px solid #E0E0E0"}}>
+<h2 style={{fontFamily:"'Outfit'",fontSize:"1.1rem",fontWeight:700,marginBottom:12}}>📄 Μετατροπή σε PDF</h2>
+<p style={{fontSize:"0.8rem",color:"#666",marginBottom:12}}>Μετατρέψτε εικόνες (JPG, PNG) ή αρχεία κειμένου σε PDF</p>
+<div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap"}}>
+<input type="file" accept="image/*,.txt,.csv,.doc,.docx" onChange={e=>{setConvFile(e.target.files[0]);setConvStatus("");}} style={{flex:1,fontSize:"0.82rem"}}/>
+<button onClick={convertToPdf} disabled={!convFile} style={{padding:"8px 20px",borderRadius:8,border:"none",background:convFile?"#1565C0":"#CCC",color:"white",cursor:convFile?"pointer":"not-allowed",fontWeight:700,fontSize:"0.84rem"}}>📄 Μετατροπή</button>
+</div>
+{convFile&&<div style={{marginTop:8,fontSize:"0.78rem",color:"#333"}}>📎 {convFile.name} ({(convFile.size/1024).toFixed(1)} KB)</div>}
+{convStatus&&<div style={{marginTop:6,fontSize:"0.78rem",fontWeight:600,color:convStatus.includes("✅")?"#2E7D32":convStatus.includes("❌")?"#C62828":"#1565C0"}}>{convStatus}</div>}
+</div>
+
+{/* Merge PDFs */}
+<div style={{background:"white",borderRadius:12,padding:20,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",border:"1px solid #E0E0E0"}}>
+<h2 style={{fontFamily:"'Outfit'",fontSize:"1.1rem",fontWeight:700,marginBottom:12}}>📑 Συγχώνευση PDF</h2>
+<p style={{fontSize:"0.8rem",color:"#666",marginBottom:12}}>Συνδυάστε έως 10 αρχεία PDF ή εικόνες σε ένα PDF</p>
+<div onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);addMergeFiles(e.dataTransfer.files);}}
+  style={{border:`2px dashed ${dragOver?"#1565C0":"#CCC"}`,borderRadius:10,padding:20,textAlign:"center",background:dragOver?"#E3F2FD":"#FAFAFA",transition:"all 0.2s",cursor:"pointer",marginBottom:12}}
+  onClick={()=>{const inp=document.createElement("input");inp.type="file";inp.multiple=true;inp.accept=".pdf,image/*";inp.onchange=e=>addMergeFiles(e.target.files);inp.click();}}>
+<div style={{fontSize:"2rem",marginBottom:6}}>📂</div>
+<div style={{fontSize:"0.84rem",fontWeight:600,color:dragOver?"#1565C0":"#666"}}>Σύρετε αρχεία εδώ ή κάντε κλικ</div>
+<div style={{fontSize:"0.72rem",color:"#999",marginTop:4}}>PDF & εικόνες • Μέχρι 10 αρχεία</div>
+</div>
+{mergeFiles.length>0&&<div style={{marginBottom:12}}>
+<div style={{fontSize:"0.78rem",fontWeight:700,marginBottom:6}}>📋 Αρχεία ({mergeFiles.length}/10):</div>
+{mergeFiles.map((f,i)=><div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 8px",background:"#F5F5F5",borderRadius:6,marginBottom:4,fontSize:"0.76rem"}}>
+<span style={{fontWeight:600,color:"#1565C0",minWidth:20}}>{i+1}.</span>
+<span style={{flex:1}}>{f.name}</span>
+<span style={{color:"#999",fontSize:"0.68rem"}}>{(f.size/1024).toFixed(1)} KB</span>
+<button onClick={()=>setMergeFiles(p=>p.filter((_,j)=>j!==i))} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"2px 6px",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>✖</button>
+</div>)}
+</div>}
+<div style={{display:"flex",gap:8}}>
+<button onClick={mergePdfs} disabled={mergeFiles.length<2} style={{padding:"8px 20px",borderRadius:8,border:"none",background:mergeFiles.length>=2?"#2E7D32":"#CCC",color:"white",cursor:mergeFiles.length>=2?"pointer":"not-allowed",fontWeight:700,fontSize:"0.84rem"}}>📑 Συγχώνευση</button>
+{mergeFiles.length>0&&<button onClick={()=>{setMergeFiles([]);setMergeStatus("");}} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #C62828",background:"white",color:"#C62828",cursor:"pointer",fontWeight:600,fontSize:"0.8rem"}}>🗑️ Καθαρισμός</button>}
+</div>
+{mergeStatus&&<div style={{marginTop:8,fontSize:"0.78rem",fontWeight:600,color:mergeStatus.includes("✅")?"#2E7D32":mergeStatus.includes("❌")?"#C62828":"#1565C0"}}>{mergeStatus}</div>}
+</div>
+</div>);
+}
 
 // ═══ OFFERS PANEL ═══
 function OffersPanel({offers,setOffers,cu,pr}){
