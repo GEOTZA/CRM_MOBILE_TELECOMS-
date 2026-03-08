@@ -57,6 +57,13 @@ const downloadDoc=async(path,name)=>{
   }catch(e){console.error("📥 Download error:",e);alert("Σφάλμα λήψης: "+e.message);}
 };
 
+const downloadAll=async(docs)=>{
+  if(!docs||docs.length===0)return;
+  for(const d of docs){
+    try{await downloadDoc(d.path,d.name);await new Promise(r=>setTimeout(r,500));}catch(e){console.error("Download error:",d.name,e);}
+  }
+};
+
 /* ═══ SUPABASE CONFIG ═══
    Set USE_SUPA=true and fill in your project URL + anon key to connect.
    Run the SQL below in Supabase SQL Editor to create tables. */
@@ -125,6 +132,29 @@ const PROVIDERS = {
     services:["Νέα Σύνδεση","Φορητότητα","Αλλαγή Προγράμματος"],
     lineTypes:["Οικιακό","Επαγγελματικό"] },
 };
+
+const ENERGY_PROVIDERS={
+  dei:{name:"ΔΕΗ",color:"#0066B3",programs:["Γ1/Γ1Ν Οικιακό","myHome Enter","myHome 4All","myHome Online","myHome Plan","myHome Maxima","myHome EnterTwo","myHome 4Students","myBusiness 4All","myBusiness Enter","myBusiness Dynamic"]},
+  protergia:{name:"Protergia",color:"#E8590C",programs:["Value Safe","Value Secure 12M","Value Sure","Picasso Home","Picasso Plus","Value Pulse","Value Special","Value Sure Επαγγελματικό"]},
+  heron:{name:"ΗΡΩΝ",color:"#1A237E",programs:["Blue Generous Home","Blue Generous Max Home","Protect Home","Basic Home","Blue Generous Business"]},
+  enerwave:{name:"Enerwave",color:"#00897B",programs:["Bright","Reward Saver","Reward Maximum","Enerwave Fix","Enerwave Green"]},
+  nrg:{name:"NRG",color:"#6A1B9A",programs:["Fixed OnTime","Fixed OnTime Advanced","@cost+","nrg Basic","nrg Business Fix"]},
+  watt:{name:"Watt+Volt",color:"#F9A825",programs:["Value Home","Value Plus","Smart Home","Business Value"]},
+  volton:{name:"Volton",color:"#2E7D32",programs:["Blue Fixed","Blue Fixed Plus","Yellow Flat","Green","Business Blue"]},
+  fysiko:{name:"Φυσικό Αέριο",color:"#0277BD",programs:["Ρεύμα HOME FIXED","MAXI Home 150","Ρεύμα Business Fixed"]},
+  volterra:{name:"Volterra",color:"#4E342E",programs:["Volt Home","Volt Plus","Volt Business"]},
+  ken:{name:"ΚΕΝ",color:"#546E7A",programs:["Economy Home","Economy Plus","Economy Business"]},
+  elin:{name:"ΕΛΙΝΟΙΛ / Elin",color:"#D84315",programs:["Power On! Blue Day","Power On! Green","Power On! Business"]},
+  eunice:{name:"We Energy / EUNICE",color:"#1B5E20",programs:["Green Home","Business Fix","Eco Plus"]},
+  solar:{name:"Solar Energy",color:"#FF8F00",programs:["Solar Home","Solar Business"]},
+  zenith:{name:"ZeniΘ",color:"#283593",programs:["Zenith Home","Zenith Business","Zenith Plus"]}
+};
+const ENERGY_TYPES=["Οικιακό Γ1","Επαγγελματικό Γ21","Επαγγελματικό Γ22","Βιομηχανικό"];
+const INVOICE_COLORS=["🔵 Μπλε (Σταθερό)","🟠 Πορτοκαλί (Κυμαινόμενο)","🟢 Πράσινο (Ειδικό)"];
+const BILLING_TYPES=["Κανονικό","Νυχτερινό"];
+const PAYMENT_METHODS=["Πάγια Εντολή","Πιστωτική Κάρτα","Μετρητά"];
+const ENERGY_ACTIONS=["Νέα Σύνδεση","Αλλαγή Παρόχου","Αλλαγή Επωνυμίας","Αλλαγή Επωνυμίας & Παρόχου","Επανασύνδεση"];
+const CONN_STATUS=["Ενεργό","Κομμένο (Επανασύνδεση)"];
 
 const ST = {
   draft:{ l:"Αποθηκευμένη",c:"#78909C",bg:"#ECEFF1",i:"💾" },
@@ -723,7 +753,7 @@ const AdmBk=({onClick})=><button onClick={onClick} style={{padding:"8px 16px",bo
 const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{background:"white",borderRadius:12,padding:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderLeft:"4px solid "+cl,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";}}><div style={{fontSize:"1.5rem",marginBottom:4}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1rem"}}>{ti}</div><p style={{fontSize:"0.76rem",color:"#888",marginTop:2}}>{ds}</p>{ct!==undefined&&<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.4rem",color:cl,marginTop:4}}>{ct}</div>}</div>;
 
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
-const emptyLine=(provKey)=>({id:Date.now()+Math.random(),type:(provKey&&PROVIDERS[provKey]?.programs?.mobile?.length===0)?"landline":"mobile",prog:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""});
+const emptyLine=(provKey,lineType)=>{const defType=lineType||(provKey&&PROVIDERS[provKey]?.programs?.mobile?.length===0?"landline":"mobile");return{id:Date.now()+Math.random(),type:defType,prog:"",progCustom:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:"",eProv:"dei",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:""};};
 const[form,setForm]=useState(()=>{
   const today=new Date().toISOString().slice(0,10);
   const initEnd=(()=>{const d=new Date();d.setMonth(d.getMonth()+24);return d.toISOString().slice(0,10);})();
@@ -753,16 +783,19 @@ const lines=form.lines||[emptyLine()];
 const setLines=nl=>setForm(p=>({...p,lines:nl}));
 const addLine=()=>setLines([...lines,emptyLine(prov)]);
 const rmLine=i=>{if(lines.length>1)setLines(lines.filter((_,j)=>j!==i));};
-const updLine=(i,k,v)=>setLines(lines.map((ln,j)=>j===i?{...ln,[k]:v}:ln));
+const updLine=(i,k,v)=>setForm(p=>{const nl=[...(p.lines||[])];if(nl[i])nl[i]={...nl[i],[k]:v};return{...p,lines:nl};});
+const updLineMulti=(i,updates)=>setForm(p=>{const nl=[...(p.lines||[])];if(nl[i])nl[i]={...nl[i],...updates};return{...p,lines:nl};});
 
 // Totals
 const mobTotal=lines.filter(l=>l.type==="mobile").reduce((s,l)=>s+(parseFloat(l.price)||0),0);
 const landTotal=lines.filter(l=>l.type==="landline").reduce((s,l)=>s+(parseFloat(l.price)||0),0);
-const grandTotal=mobTotal+landTotal;
+const energyTotal=lines.filter(l=>l.type==="energy").reduce((s,l)=>s+(parseFloat(l.price)||0),0);
+const grandTotal=mobTotal+landTotal+energyTotal;
 const subTotal=lines.filter(l=>l.mode==="subsidy").reduce((s,l)=>s+(parseFloat(l.subsidy)||0),0);
 const subCount=lines.filter(l=>l.mode==="subsidy").length;
 const mobCount=lines.filter(l=>l.type==="mobile").length;
 const landCount=lines.filter(l=>l.type==="landline").length;
+const energyCount=lines.filter(l=>l.type==="energy").length;
 
 const provOpts=["Vodafone","Cosmote","Nova"].filter(x=>x.toLowerCase()!==prov);
 
@@ -796,32 +829,66 @@ return(
 {/* ═══ ΓΡΑΜΜΕΣ ΠΡΟΪΟΝΤΩΝ ═══ */}
 <div style={{padding:"14px 20px",background:"#E8F5E9",borderLeft:"4px solid #4CAF50",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>📦 Γραμμές Προϊόντων <span style={{fontSize:"0.72rem",color:"#888",fontWeight:400}}>({mobCount} κινητ. + {landCount} σταθ.)</span></div>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>📦 Γραμμές Προϊόντων <span style={{fontSize:"0.72rem",color:"#888",fontWeight:400}}>({mobCount} κιν. + {landCount} σταθ. + {energyCount} ρεύμα)</span></div>
 <button onClick={addLine} style={B("#4CAF50","white",{padding:"6px 14px",fontSize:"0.78rem"})}>➕ Προσθήκη Γραμμής</button>
 </div>
 
 {lines.map((ln,i)=>{
 const isMob=ln.type==="mobile";
+const isEnergy=ln.type==="energy";
+const isLand=ln.type==="landline";
 const isPort=ln.nlp==="port";
 const isSub=ln.mode==="subsidy";
-const progs=isMob?pr.programs.mobile:pr.programs.landline;
+const progs=isEnergy?(ENERGY_PROVIDERS[ln.eProv]?.programs||[]):(isMob?pr.programs.mobile:pr.programs.landline);
+const lineColor=isEnergy?"#FF6F00":(isMob?"#2196F3":"#FF9800");
+const lineIcon=isEnergy?"⚡":(isMob?"📱":"📞");
+const lineLabel=isEnergy?"Ρεύμα":(isMob?"Κινητή":"Σταθερή");
 return(
-<div key={ln.id} style={{background:"white",border:"1px solid #E0E0E0",borderRadius:10,padding:12,marginBottom:10,borderLeft:`4px solid ${isMob?"#2196F3":"#FF9800"}`}}>
+<div key={ln.id} style={{background:"white",border:"1px solid #E0E0E0",borderRadius:10,padding:12,marginBottom:10,borderLeft:`4px solid ${lineColor}`}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-<span style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.82rem",color:isMob?"#1565C0":"#E65100"}}>{isMob?"📱":"📞"} Γραμμή {i+1} — {isMob?"Κινητή":"Σταθερή"}</span>
+<span style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.82rem",color:lineColor}}>{lineIcon} Γραμμή {i+1} — {lineLabel}{isEnergy&&ln.eProv?` (${ENERGY_PROVIDERS[ln.eProv]?.name||""})`:""}</span>
 <button onClick={()=>rmLine(i)} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>🗑️</button>
 </div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
 
-<FL l="Τύπος" req><select value={ln.type} onChange={e=>updLine(i,"type",e.target.value)} style={iS}>{pr.programs.mobile.length>0&&<option value="mobile">📱 Κινητή</option>}<option value="landline">📞 Σταθερή</option></select></FL>
+<FL l="Τύπος" req><select value={ln.type} onChange={e=>updLine(i,"type",e.target.value)} style={iS}>{pr.programs.mobile.length>0&&<option value="mobile">📱 Κινητή</option>}<option value="landline">📞 Σταθερή</option><option value="energy">⚡ Ρεύμα</option></select></FL>
 
+{/* ═══ ENERGY FIELDS ═══ */}
+{isEnergy&&<>
+<FL l="Πάροχος Ρεύματος" req><select value={ln.eProv||"dei"} onChange={e=>updLineMulti(i,{eProv:e.target.value,prog:"",progCustom:""})} style={{...iS,background:ENERGY_PROVIDERS[ln.eProv]?.color+"15",fontWeight:600}}>{Object.entries(ENERGY_PROVIDERS).map(([k,ep])=><option key={k} value={k}>{ep.name}</option>)}</select></FL>
+
+<FL l="Πρόγραμμα" req><div style={{position:"relative"}}><input list={`ep_${ln.id}`} value={ln.progCustom||ln.prog||""} onChange={e=>{const v=e.target.value;updLineMulti(i,{prog:v,progCustom:v});}} placeholder="Επιλέξτε ή πληκτρολογήστε..." style={iS}/><datalist id={`ep_${ln.id}`}>{progs.map(x=><option key={x} value={x}/>)}</datalist></div></FL>
+
+<FL l="Τιμή (€)"><input type="number" value={ln.price} onChange={e=>updLine(i,"price",e.target.value)} placeholder="0.00" style={iS}/></FL>
+
+<FL l="Τύπος Τιμολογίου" req><select value={ln.eInvoiceColor||""} onChange={e=>updLine(i,"eInvoiceColor",e.target.value)} style={iS}>{INVOICE_COLORS.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Τύπος Ρεύματος" req><select value={ln.eType||""} onChange={e=>updLine(i,"eType",e.target.value)} style={iS}>{ENERGY_TYPES.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Τιμολόγηση"><select value={ln.eBilling||""} onChange={e=>updLine(i,"eBilling",e.target.value)} style={iS}>{BILLING_TYPES.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Τρόπος Πληρωμής"><select value={ln.ePayment||""} onChange={e=>updLine(i,"ePayment",e.target.value)} style={iS}>{PAYMENT_METHODS.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Ενέργεια" req><select value={ln.eAction||""} onChange={e=>updLine(i,"eAction",e.target.value)} style={iS}>{ENERGY_ACTIONS.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Κατάσταση Παροχής"><select value={ln.eConnStatus||"Ενεργό"} onChange={e=>updLine(i,"eConnStatus",e.target.value)} style={{...iS,background:ln.eConnStatus==="Κομμένο (Επανασύνδεση)"?"#FFEBEE":"#E8F5E9",fontWeight:600,color:ln.eConnStatus==="Κομμένο (Επανασύνδεση)"?"#C62828":"#2E7D32"}}>{CONN_STATUS.map(x=><option key={x}>{x}</option>)}</select></FL>
+
+<FL l="Αριθμός Παροχής"><input type="text" value={ln.eParochi||""} onChange={e=>updLine(i,"eParochi",e.target.value.replace(/[^\d]/g,""))} placeholder="Αρ. Παροχής" style={iS}/></FL>
+
+<FL l="ΗΚΑΣΠ"><input type="text" value={ln.eHkasp||""} onChange={e=>updLine(i,"eHkasp",e.target.value)} placeholder="ΗΚΑΣΠ" style={iS}/></FL>
+
+{(ln.eAction==="Αλλαγή Παρόχου"||ln.eAction==="Αλλαγή Επωνυμίας & Παρόχου")&&<FL l="Από Πάροχο"><select value={ln.fromProv||""} onChange={e=>updLine(i,"fromProv",e.target.value)} style={iS}><option value="">—</option>{Object.values(ENERGY_PROVIDERS).map(ep=><option key={ep.name}>{ep.name}</option>)}</select></FL>}
+</>}
+
+{/* ═══ MOBILE/LANDLINE FIELDS ═══ */}
+{!isEnergy&&<>
 <FL l="Πρόγραμμα" req><select value={ln.prog} onChange={e=>updLine(i,"prog",e.target.value)} style={iS}><option value="">—</option>{progs.map(x=><option key={x}>{x}</option>)}</select></FL>
 
 <FL l="Τιμή (€)" req><input type="number" value={ln.price} onChange={e=>updLine(i,"price",e.target.value)} placeholder="0.00" style={iS}/></FL>
 
-<FL l="Τρόπος" req><select value={ln.mode} onChange={e=>updLine(i,"mode",e.target.value)} style={iS}><option value="simo">SIM Only</option><option value="subsidy">Επιδότηση</option></select></FL>
+{isMob&&<FL l="Τρόπος" req><select value={ln.mode} onChange={e=>updLine(i,"mode",e.target.value)} style={iS}><option value="simo">SIM Only</option><option value="subsidy">Επιδότηση</option></select></FL>}
 
-{isSub&&<FL l="Ποσό Επιδότησης (€)"><input type="number" maxLength={4} value={ln.subsidy} onChange={e=>{if(e.target.value.length<=4)updLine(i,"subsidy",e.target.value)}} placeholder="0000" style={iS}/></FL>}
+{isMob&&isSub&&<FL l="Ποσό Επιδότησης (€)"><input type="number" maxLength={4} value={ln.subsidy} onChange={e=>{if(e.target.value.length<=4)updLine(i,"subsidy",e.target.value)}} placeholder="0000" style={iS}/></FL>}
 
 <FL l="Νέα/Φορητ." req><select value={ln.nlp} onChange={e=>updLine(i,"nlp",e.target.value)} style={iS}><option value="new">Νέα Γραμμή</option><option value="port">Φορητότητα</option></select></FL>
 
@@ -829,27 +896,26 @@ return(
 
 {isMob&&<FL l="Αριθμός Κινητού"><input type="tel" maxLength={10} value={ln.mobNum} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,10);updLine(i,"mobNum",v)}} placeholder="69xxxxxxxx" style={iS}/></FL>}
 
-{!isMob&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/[^\d]/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
+{isLand&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/[^\d]/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
+</>}
 
-{!isMob&&<>
-<div style={{marginTop:10,padding:14,background:"linear-gradient(135deg,#E3F2FD,#F5F5F5)",borderRadius:10,border:"1px solid #90CAF9"}}>
+{(isLand||isEnergy)&&<>
+<div style={{marginTop:10,padding:14,background:isEnergy?"linear-gradient(135deg,#FFF3E0,#F5F5F5)":"linear-gradient(135deg,#E3F2FD,#F5F5F5)",borderRadius:10,border:`1px solid ${isEnergy?"#FFB74D":"#90CAF9"}`}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
 <span style={{fontWeight:700,fontSize:"0.88rem",color:"#1565C0"}}>📍 Διεύθυνση Εγκατάστασης</span>
 <div style={{display:"flex",gap:6}}>
-<button onClick={()=>{updLine(i,"instAddr",form.addr);updLine(i,"instCity",form.city);updLine(i,"instTk",form.tk);}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #1565C0",background:"white",color:"#1565C0",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Κύρια</button>
-{form.billAddr&&<button onClick={()=>{updLine(i,"instAddr",form.billAddr);updLine(i,"instCity",form.billCity);updLine(i,"instTk",form.billTk);}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #FF6F00",background:"white",color:"#FF6F00",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Λογ/σμών</button>}
+<button onClick={()=>updLineMulti(i,{instAddr:form.addr,instCity:form.city,instTk:form.tk})} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #1565C0",background:"white",color:"#1565C0",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Κύρια</button>
+{form.billAddr&&<button onClick={()=>updLineMulti(i,{instAddr:form.billAddr,instCity:form.billCity,instTk:form.billTk})} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #FF6F00",background:"white",color:"#FF6F00",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Λογ/σμών</button>}
 </div>
 </div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8}}>
+<div style={{display:"grid",gridTemplateColumns:"1fr 150px 90px 130px 130px",gap:8,alignItems:"end"}}>
 <FL l="Διεύθυνση"><input value={ln.instAddr||""} onChange={e=>updLine(i,"instAddr",e.target.value)} placeholder="Οδός & αριθμός" style={iS}/></FL>
 <FL l="Πόλη"><input value={ln.instCity||""} onChange={e=>updLine(i,"instCity",e.target.value)} style={iS}/></FL>
 <FL l="ΤΚ"><input value={ln.instTk||""} onChange={e=>updLine(i,"instTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} maxLength={5} style={iS}/></FL>
+<FL l="📌 Lat"><input type="text" value={ln.instLat||""} onChange={e=>updLine(i,"instLat",e.target.value)} placeholder="37.9838" style={iS}/></FL>
+<FL l="📌 Lng"><input type="text" value={ln.instLng||""} onChange={e=>updLine(i,"instLng",e.target.value)} placeholder="23.7275" style={iS}/></FL>
 </div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginTop:8}}>
-<FL l="📌 Latitude"><input type="text" value={ln.instLat||""} onChange={e=>updLine(i,"instLat",e.target.value)} placeholder="π.χ. 37.9838" style={iS}/></FL>
-<FL l="📌 Longitude"><input type="text" value={ln.instLng||""} onChange={e=>updLine(i,"instLng",e.target.value)} placeholder="π.χ. 23.7275" style={iS}/></FL>
-{ln.instLat&&ln.instLng?<div style={{display:"flex",alignItems:"flex-end",paddingBottom:4}}><a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{padding:"6px 14px",borderRadius:6,background:"#1565C0",color:"white",fontSize:"0.76rem",fontWeight:600,textDecoration:"none",display:"inline-block"}}>🗺️ Χάρτης</a></div>:null}
-</div>
+{ln.instLat&&ln.instLng&&<div style={{marginTop:6}}><a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{padding:"4px 12px",borderRadius:6,background:"#1565C0",color:"white",fontSize:"0.72rem",fontWeight:600,textDecoration:"none",display:"inline-block"}}>🗺️ Προβολή στο χάρτη</a></div>}
 </div>
 </>}
 
@@ -866,6 +932,10 @@ return(
 <div style={{fontSize:"0.7rem",color:"#E65100",fontWeight:600}}>📞 Σταθερή ({landCount})</div>
 <div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",color:"#E65100"}}>€{landTotal.toFixed(2)}</div>
 </div>
+{energyCount>0&&<div style={{textAlign:"center",padding:10,background:"#FFF3E0",borderRadius:8}}>
+<div style={{fontSize:"0.7rem",color:"#FF6F00",fontWeight:600}}>⚡ Ρεύμα ({energyCount})</div>
+<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",color:"#FF6F00"}}>€{energyTotal.toFixed(2)}</div>
+</div>}
 {subCount>0&&<div style={{textAlign:"center",padding:10,background:"#FCE4EC",borderRadius:8}}>
 <div style={{fontSize:"0.7rem",color:"#AD1457",fontWeight:600}}>🎁 Επιδότηση ({subCount})</div>
 <div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.3rem",color:"#AD1457"}}>€{subTotal.toFixed(2)}</div>
@@ -1001,11 +1071,12 @@ return(
 <DF l="Agent" v={r.agentName}/><DF l="Partner" v={r.partner}/></div>
 {(r.lines&&r.lines.length>0)?r.lines.map((ln,i)=>(
 <div key={i} style={{background:"white",border:"1px solid #E0E0E0",borderRadius:8,padding:10,marginBottom:6,borderLeft:`3px solid ${ln.type==="mobile"?"#2196F3":"#FF9800"}`}}>
-<div style={{fontWeight:700,fontSize:"0.78rem",color:ln.type==="mobile"?"#1565C0":"#E65100",marginBottom:4}}>{ln.type==="mobile"?"📱 Κινητή":"📞 Σταθερή"} #{i+1}</div>
+<div style={{fontWeight:700,fontSize:"0.78rem",color:ln.type==="energy"?"#FF6F00":(ln.type==="mobile"?"#1565C0":"#E65100"),marginBottom:4}}>{ln.type==="energy"?"⚡ Ρεύμα":(ln.type==="mobile"?"📱 Κινητή":"📞 Σταθερή")} #{i+1}{ln.type==="energy"&&ln.eProv?` — ${ENERGY_PROVIDERS[ln.eProv]?.name||""}`:""}</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:4}}>
-<DF l="Πρόγραμμα" v={ln.prog}/><DF l="Τιμή" v={ln.price?"€"+ln.price:"—"}/>
-<DF l="Τρόπος" v={ln.mode==="simo"?"SIM Only":"Επιδότηση"+(ln.subsidy?" €"+ln.subsidy:"")}/>
-<DF l="Τύπος" v={ln.nlp==="port"?"Φορητότητα"+(ln.fromProv?" από "+ln.fromProv:""):"Νέα Γραμμή"}/>
+<DF l="Πρόγραμμα" v={ln.progCustom||ln.prog}/><DF l="Τιμή" v={ln.price?"€"+ln.price:"—"}/>
+{ln.type!=="energy"&&<DF l="Τρόπος" v={ln.mode==="simo"?"SIM Only":"Επιδότηση"+(ln.subsidy?" €"+ln.subsidy:"")}/>}
+{ln.type!=="energy"&&<DF l="Τύπος" v={ln.nlp==="port"?"Φορητότητα"+(ln.fromProv?" από "+ln.fromProv:""):"Νέα Γραμμή"}/>}
+{ln.type==="energy"&&<><DF l="Τιμολόγιο" v={ln.eInvoiceColor}/><DF l="Τύπος Ρεύματος" v={ln.eType}/><DF l="Τιμολόγηση" v={ln.eBilling}/><DF l="Πληρωμή" v={ln.ePayment}/><DF l="Ενέργεια" v={ln.eAction}/>{ln.eConnStatus&&<DF l="Κατάσταση" v={ln.eConnStatus}/>}{ln.eParochi&&<DF l="Αρ. Παροχής" v={ln.eParochi}/>}{ln.eHkasp&&<DF l="ΗΚΑΣΠ" v={ln.eHkasp}/>}{ln.fromProv&&<DF l="Από Πάροχο" v={ln.fromProv}/>}</>}
 {ln.mobNum&&<DF l="Κινητό" v={ln.mobNum}/>}{ln.landNum&&<DF l="Σταθερό" v={ln.landNum}/>}
 {ln.instAddr&&<DF l="📍 Εγκατάσταση" v={`${ln.instAddr}, ${ln.instCity||""} ${ln.instTk||""}`}/>}
 {(ln.instLat&&ln.instLng)&&<DF l="📌 Συντεταγμένες" v={<a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{color:"#1565C0",textDecoration:"underline"}}>{ln.instLat}, {ln.instLng} 🗺️</a>}/>}
@@ -1045,7 +1116,10 @@ return(
 {/* DOCUMENTS */}
 {(()=>{const docs=r.documents?typeof r.documents==="string"?JSON.parse(r.documents):r.documents:[];return docs.length>0?
 <div style={{padding:"12px 20px",background:"#FFF8E1",borderBottom:"1px solid #F0F0F0"}}>
-<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📎 Δικαιολογητικά ({docs.length})</div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem"}}>📎 Δικαιολογητικά ({docs.length})</div>
+{docs.length>1&&<button onClick={()=>downloadAll(docs)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #2E7D32",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.72rem",fontWeight:700}}>📥 Λήψη Όλων</button>}
+</div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
 {docs.map((d,i)=>{const labels={id:"🪪 Ταυτότητα",provider_bill:"📄 Λογ.Παρόχου",address_proof:"🏠 Αποδ.Διεύθυνσης",bank_proof:"🏦 Αποδ.Λογαριασμού",business_proof:"💼 Επαγγ.Ιδιότητα",other:"📁 Λοιπά"};
 return <button key={i} onClick={()=>downloadDoc(d.path,d.name)} style={{padding:"6px 12px",borderRadius:6,background:"white",border:"1px solid #E0E0E0",fontSize:"0.76rem",fontWeight:600,color:"#1565C0",cursor:"pointer",display:"inline-flex",alignItems:"center",gap:4}}>{labels[d.type]||d.type} <span style={{fontSize:"0.65rem",color:"#888"}}>{d.name}</span></button>;})}
@@ -1193,7 +1267,7 @@ return(
 <span style={{fontSize:"0.7rem",color:"#999"}}>{m.ts}</span></div>
 <p style={{fontSize:"0.84rem"}}>{m.text}</p>
 {m.attachments&&m.attachments.length>0&&<div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
-{m.attachments&&m.attachments.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{m.attachments.map((a,j)=><button key={j} onClick={()=>downloadDoc(a.path,a.name)} style={{padding:"4px 10px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.7rem",fontWeight:600,border:"none",cursor:"pointer",textAlign:"left",display:"block"}}>📎 {a.name}</button>)}</div>}
+{m.attachments&&m.attachments.length>0&&<div style={{display:"flex",flexDirection:"column",gap:4,marginTop:4}}>{m.attachments.map((a,j)=><button key={j} onClick={()=>downloadDoc(a.path,a.name)} style={{padding:"4px 10px",borderRadius:4,background:"#E3F2FD",color:"#1565C0",fontSize:"0.7rem",fontWeight:600,border:"none",cursor:"pointer",textAlign:"left",display:"block"}}>📎 {a.name}</button>)}{m.attachments.length>1&&<button onClick={()=>downloadAll(m.attachments)} style={{padding:"4px 10px",borderRadius:4,background:"#E8F5E9",color:"#2E7D32",fontSize:"0.7rem",fontWeight:700,border:"1px solid #2E7D32",cursor:"pointer"}}>📥 Λήψη Όλων ({m.attachments.length})</button>}</div>}
 </div>}
 </div>))}
 </div>
@@ -1422,7 +1496,7 @@ const addMergeFiles=(files)=>{
 };
 
 return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
-<h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:20}}>🛠️ Εργαλεία PDF</h1>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:20}}>🛠️ Εργαλεία</h1>
 
 {/* Convert to PDF */}
 <div style={{background:"white",borderRadius:12,padding:20,marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",border:"1px solid #E0E0E0"}}>
@@ -1462,6 +1536,174 @@ return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 </div>
 {mergeStatus&&<div style={{marginTop:8,fontSize:"0.78rem",fontWeight:600,color:mergeStatus.includes("✅")?"#2E7D32":mergeStatus.includes("❌")?"#C62828":"#1565C0"}}>{mergeStatus}</div>}
 </div>
+
+{/* ═══ ENERGY BILL ANALYZER ═══ */}
+<EnergyAnalyzer/>
+
+</div>);
+}
+
+// ═══ ENERGY BILL ANALYZER ═══
+function EnergyAnalyzer(){
+const[billFile,setBillFile]=useState(null);
+const[billPreview,setBillPreview]=useState(null);
+const[invoicePref,setInvoicePref]=useState("all");
+const[analyzing,setAnalyzing]=useState(false);
+const[result,setResult]=useState(null);
+const[error,setError]=useState("");
+
+const KNOWN_PLANS={
+  blue:[
+    {prov:"Volton",prog:"Blue Fixed Plus",kwh:0.069,pagio:11.9},
+    {prov:"ΗΡΩΝ",prog:"Blue Generous Max Home",kwh:0.0945,pagio:9.9},
+    {prov:"Protergia",prog:"Value Secure 12M",kwh:0.099,pagio:9.9},
+    {prov:"NRG",prog:"Fixed OnTime Advanced",kwh:0.099,pagio:9.9},
+    {prov:"Elpedison",prog:"Reward Maximum",kwh:0.088,pagio:12.9},
+    {prov:"ΔΕΗ",prog:"myHome Enter",kwh:0.145,pagio:5.0},
+    {prov:"Φυσικό Αέριο",prog:"HOME FIXED",kwh:0.139,pagio:9.9},
+    {prov:"Watt+Volt",prog:"Value Home Blue",kwh:0.109,pagio:7.9},
+  ],
+  orange:[
+    {prov:"ΔΕΗ",prog:"Γ1/Γ1Ν Οικιακό",kwh:0.139,pagio:5.0},
+    {prov:"ΗΡΩΝ",prog:"Protect Home",kwh:0.159,pagio:5.5},
+    {prov:"Protergia",prog:"Value Pulse",kwh:0.091,pagio:5.0},
+    {prov:"NRG",prog:"@cost+",kwh:0.147,pagio:7.1},
+    {prov:"Elpedison",prog:"Reward Saver",kwh:0.150,pagio:7.9},
+    {prov:"Volton",prog:"Yellow Flat",kwh:0.099,pagio:9.9},
+  ],
+  green:[
+    {prov:"ΔΕΗ",prog:"myHome 4All Ειδικό",kwh:0.136,pagio:5.0},
+    {prov:"ΗΡΩΝ",prog:"Basic Home Ειδικό",kwh:0.148,pagio:5.0},
+    {prov:"Protergia",prog:"Value Special",kwh:0.159,pagio:5.0},
+    {prov:"Volton",prog:"Green Ειδικό",kwh:0.199,pagio:4.9},
+    {prov:"NRG",prog:"Ειδικό Τιμολόγιο",kwh:0.197,pagio:3.5},
+  ]
+};
+
+const handleFile=(e)=>{
+  const f=e.target.files[0];
+  if(!f)return;
+  setBillFile(f);setResult(null);setError("");
+  if(f.type.startsWith("image/")){
+    const reader=new FileReader();
+    reader.onload=ev=>setBillPreview(ev.target.result);
+    reader.readAsDataURL(f);
+  }else{setBillPreview(null);}
+};
+
+const analyze=async()=>{
+  if(!billFile){setError("Επιλέξτε αρχείο πρώτα");return;}
+  setAnalyzing(true);setError("");setResult(null);
+  try{
+    const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error("Read failed"));r.readAsDataURL(billFile);});
+    const mediaType=billFile.type.startsWith("image/")?(billFile.type==="image/png"?"image/png":"image/jpeg"):(billFile.type==="application/pdf"?"application/pdf":"image/jpeg");
+    const contentBlock=mediaType==="application/pdf"?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}:{type:"image",source:{type:"base64",media_type:mediaType,data:base64}};
+    const response=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        model:"claude-sonnet-4-20250514",
+        max_tokens:1000,
+        messages:[{role:"user",content:[
+          contentBlock,
+          {type:"text",text:`Ανέλυσε αυτόν τον λογαριασμό ρεύματος. Εξήγαγε τα στοιχεία σε JSON μορφή ΜΟΝΟ (χωρίς markdown, χωρίς backticks):
+{"provider":"όνομα παρόχου","plan":"όνομα προγράμματος","consumption_kwh":αριθμός κατανάλωσης σε kWh,"price_per_kwh":τιμή ανά kWh σε ευρώ,"monthly_fee":πάγιο σε ευρώ ανά μήνα,"total_amount":συνολικό ποσό,"supply_number":"αριθμός παροχής","hkasp":"ΗΚΑΣΠ αν υπάρχει","address":"διεύθυνση εγκατάστασης","tariff_type":"Γ1 ή Γ21 ή Γ22","billing_type":"Κανονικό ή Νυχτερινό","period_months":πόσοι μήνες καλύπτει ο λογαριασμός}
+Αν δεν βρεις κάποιο πεδίο βάλε null. Απάντησε ΜΟΝΟ με JSON.`}
+        ]}]
+      })
+    });
+    const data=await response.json();
+    const txt=data.content?.map(c=>c.text||"").join("")||"";
+    const clean=txt.replace(/```json|```/g,"").trim();
+    const parsed=JSON.parse(clean);
+    
+    // Calculate recommendations
+    const kwh=parsed.consumption_kwh||0;
+    const months=parsed.period_months||4;
+    const monthlyKwh=kwh/months;
+    const currentCost=kwh*(parsed.price_per_kwh||0)+(parsed.monthly_fee||0)*months;
+    
+    const filterKey=invoicePref==="all"?null:invoicePref;
+    let plans=[];
+    if(filterKey){plans=KNOWN_PLANS[filterKey]||[];}
+    else{plans=[...KNOWN_PLANS.blue,...KNOWN_PLANS.orange,...KNOWN_PLANS.green];}
+    
+    const recommendations=plans.map(p=>{
+      const cost=kwh*p.kwh+p.pagio*months;
+      const saving=currentCost-cost;
+      const colorTag=KNOWN_PLANS.blue.includes(p)?"🔵":KNOWN_PLANS.orange.includes(p)?"🟠":"🟢";
+      return{...p,cost,saving,monthlySaving:(saving/months),colorTag};
+    }).filter(p=>p.saving>0).sort((a,b)=>b.saving-a.saving).slice(0,5);
+    
+    setResult({bill:parsed,recommendations,currentCost,kwh,months});
+  }catch(e){
+    console.error("Analysis error:",e);
+    setError("Σφάλμα ανάλυσης: "+e.message);
+  }
+  setAnalyzing(false);
+};
+
+const prefColors=[
+  {key:"all",label:"Όλα",bg:"#F5F5F5",color:"#333"},
+  {key:"blue",label:"🔵 Μπλε",bg:"#E3F2FD",color:"#1565C0"},
+  {key:"orange",label:"🟠 Πορτοκαλί",bg:"#FFF3E0",color:"#E65100"},
+  {key:"green",label:"🟢 Πράσινο",bg:"#E8F5E9",color:"#2E7D32"},
+];
+
+return(
+<div style={{background:"white",borderRadius:12,padding:20,marginTop:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",border:"1px solid #E0E0E0"}}>
+<h2 style={{fontFamily:"'Outfit'",fontSize:"1.1rem",fontWeight:700,marginBottom:4}}>⚡ Ανάλυση Λογαριασμού Ρεύματος</h2>
+<p style={{fontSize:"0.8rem",color:"#666",marginBottom:14}}>Ανεβάστε φωτογραφία ή PDF λογαριασμού — το AI θα εξάγει τα στοιχεία και θα προτείνει οικονομικότερα προγράμματα</p>
+
+<div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
+<input type="file" accept="image/*,.pdf" onChange={handleFile} style={{flex:1,fontSize:"0.82rem"}}/>
+</div>
+
+{billPreview&&<div style={{marginBottom:12,textAlign:"center"}}><img src={billPreview} alt="Λογαριασμός" style={{maxWidth:"100%",maxHeight:200,borderRadius:8,border:"1px solid #E0E0E0"}}/></div>}
+{billFile&&<div style={{fontSize:"0.78rem",color:"#333",marginBottom:10}}>📎 {billFile.name} ({(billFile.size/1024).toFixed(1)} KB)</div>}
+
+<div style={{marginBottom:14}}>
+<div style={{fontSize:"0.78rem",fontWeight:700,marginBottom:6}}>Προτίμηση τιμολογίου:</div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+{prefColors.map(pc=><button key={pc.key} onClick={()=>setInvoicePref(pc.key)} style={{padding:"6px 16px",borderRadius:8,border:invoicePref===pc.key?`2px solid ${pc.color}`:"2px solid transparent",background:pc.bg,color:pc.color,cursor:"pointer",fontWeight:invoicePref===pc.key?700:500,fontSize:"0.82rem",transition:"all 0.2s"}}>{pc.label}</button>)}
+</div>
+</div>
+
+<button onClick={analyze} disabled={!billFile||analyzing} style={{padding:"10px 24px",borderRadius:8,border:"none",background:billFile&&!analyzing?"linear-gradient(135deg,#FF6F00,#F4511E)":"#CCC",color:"white",cursor:billFile&&!analyzing?"pointer":"not-allowed",fontWeight:700,fontSize:"0.88rem",width:"100%"}}>
+{analyzing?"⏳ Ανάλυση σε εξέλιξη...":"🔍 Ανάλυση & Πρόταση"}
+</button>
+
+{error&&<div style={{marginTop:10,padding:10,background:"#FFEBEE",borderRadius:8,color:"#C62828",fontSize:"0.78rem",fontWeight:600}}>{error}</div>}
+
+{result&&<div style={{marginTop:16}}>
+{/* Extracted Bill Data */}
+<div style={{background:"#F5F5F5",borderRadius:10,padding:14,marginBottom:14}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.92rem",marginBottom:10,color:"#333"}}>📋 Στοιχεία Λογαριασμού</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
+{[["Πάροχος",result.bill.provider],["Πρόγραμμα",result.bill.plan],["Κατανάλωση",result.bill.consumption_kwh?result.bill.consumption_kwh+" kWh":null],["Τιμή/kWh",result.bill.price_per_kwh?"€"+result.bill.price_per_kwh:null],["Πάγιο/μήνα",result.bill.monthly_fee?"€"+result.bill.monthly_fee:null],["Σύνολο",result.bill.total_amount?"€"+result.bill.total_amount:null],["Αρ. Παροχής",result.bill.supply_number],["ΗΚΑΣΠ",result.bill.hkasp],["Τιμολόγιο",result.bill.tariff_type],["Τιμολόγηση",result.bill.billing_type],["Διεύθυνση",result.bill.address],["Περίοδος",result.bill.period_months?result.bill.period_months+" μήνες":null]].filter(([,v])=>v).map(([l,v])=>
+<div key={l} style={{background:"white",borderRadius:6,padding:8}}><div style={{fontSize:"0.65rem",color:"#888",fontWeight:600,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"0.82rem",fontWeight:600}}>{v}</div></div>
+)}
+</div>
+{result.currentCost>0&&<div style={{marginTop:8,padding:8,background:"#FFF3E0",borderRadius:6,fontSize:"0.82rem"}}>💰 Τρέχον κόστος: <strong>€{result.currentCost.toFixed(2)}</strong> για {result.months} μήνες ({result.kwh} kWh)</div>}
+</div>
+
+{/* Recommendations */}
+{result.recommendations.length>0?<div>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.92rem",marginBottom:10,color:"#2E7D32"}}>💡 Προτάσεις {invoicePref!=="all"?`(${prefColors.find(p=>p.key===invoicePref)?.label})`:"(Όλα)"}</div>
+{result.recommendations.map((rec,i)=>(
+<div key={i} style={{background:i===0?"linear-gradient(135deg,#E8F5E9,#F1F8E9)":"white",border:`1px solid ${i===0?"#4CAF50":"#E0E0E0"}`,borderRadius:10,padding:12,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
+<div>
+<div style={{fontWeight:700,fontSize:"0.88rem"}}>{i===0?"🏆":i===1?"🥈":"🥉"} {rec.colorTag} {rec.prov} — {rec.prog}</div>
+<div style={{fontSize:"0.76rem",color:"#666",marginTop:2}}>€{rec.kwh}/kWh • Πάγιο €{rec.pagio}/μήνα • Κόστος: €{rec.cost.toFixed(2)}</div>
+</div>
+<div style={{textAlign:"right"}}>
+<div style={{fontSize:"1.1rem",fontWeight:800,color:"#2E7D32"}}>-€{rec.saving.toFixed(2)}</div>
+<div style={{fontSize:"0.68rem",color:"#666"}}>~€{rec.monthlySaving.toFixed(2)}/μήνα</div>
+</div>
+</div>))}
+</div>
+:<div style={{padding:14,background:"#FFF3E0",borderRadius:8,fontSize:"0.82rem",color:"#E65100",fontWeight:600}}>⚠️ Δεν βρέθηκαν οικονομικότερα προγράμματα {invoicePref!=="all"?"στην επιλεγμένη κατηγορία":""}</div>}
+</div>}
 </div>);
 }
 
@@ -1526,7 +1768,9 @@ return(<div style={{background:"#FAFAFA",borderRadius:8,padding:12,border:"1px s
 
 :<div>
 {offer.desc?<p style={{fontSize:"0.82rem",color:"#444",margin:"0 0 6px"}}>{offer.desc}</p>:<p style={{fontSize:"0.78rem",color:"#BBB",fontStyle:"italic",margin:"0 0 6px"}}>Χωρίς περιγραφή</p>}
-{offer.path?<button onClick={()=>downloadDoc(offer.path,`${pv.name}_Προσφορά_${idx+1}.pdf`)} style={{padding:"5px 14px",borderRadius:6,border:"1px solid "+pv.color,background:"white",color:pv.color,cursor:"pointer",fontSize:"0.76rem",fontWeight:600}}>📥 Λήψη PDF</button>
+{offer.path?<div style={{display:"flex",gap:6,alignItems:"center"}}><button onClick={()=>downloadDoc(offer.path,`${pv.name}_Προσφορά_${idx+1}.pdf`)} style={{padding:"5px 14px",borderRadius:6,border:"1px solid "+pv.color,background:"white",color:pv.color,cursor:"pointer",fontSize:"0.76rem",fontWeight:600}}>📥 Λήψη PDF</button>
+{canEdit&&<button onClick={async()=>{if(!confirm("Διαγραφή αρχείου προσφοράς;"))return;try{await fetch(`${SUPA_URL}/storage/v1/object/documents/${offer.path}`,{method:"DELETE",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});await fetch(`${SUPA_URL}/rest/v1/offers`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json",Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({provider:pv.key,slot:idx,file_path:"",updated_at:new Date().toISOString()})});offer.path="";alert("✅ Το αρχείο διαγράφηκε");}catch(e){console.error(e);alert("Σφάλμα διαγραφής");}}} style={{padding:"5px 10px",borderRadius:6,border:"1px solid #C62828",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>🗑️</button>}
+</div>
 :<span style={{fontSize:"0.74rem",color:"#CCC"}}>— Δεν υπάρχει αρχείο —</span>}
 </div>}
 </div>);
