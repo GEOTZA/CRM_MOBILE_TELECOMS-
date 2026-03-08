@@ -302,7 +302,7 @@ const doLogin=async()=>{
         if(u.password===hash||u.password===pw){
           if(!u.active){alert("Ο λογαριασμός είναι απενεργοποιημένος");return;}
           if(u.paused){alert("Ο λογαριασμός είναι σε παύση");return;}
-          const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0,mustChangePW:u.must_change_pw||false};
+          const cu={id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0,mustChangePW:u.must_change_pw||false,accessGroup:u.access_group||"all"};
           console.log("✅ LOGIN SUCCESS - setting cu and loggedIn=true", cu.name, cu.role);
           setCU(cu);
           setLI(true);
@@ -341,7 +341,7 @@ const loadFromSupa=async()=>{
     const uRes=await fetch(`${SUPA_URL}/rest/v1/users?select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
     const uData=await uRes.json();
     if(uData&&Array.isArray(uData)){
-      setUsers(uData.map(u=>({id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:u.active?1:0,paused:u.paused?1:0,cc:u.can_create?1:0})));
+      setUsers(uData.map(u=>({id:u.id,un:u.username,pw:u.password,name:u.name,email:u.email,role:u.role,partner:u.partner,active:u.active?1:0,paused:u.paused?1:0,cc:u.can_create?1:0,accessGroup:u.access_group||"all",supervisor:u.supervisor||"",mobile:u.mobile||"",userCode:u.user_code||""})));
     }
     // Load AFM database
     const aRes=await fetch(`${SUPA_URL}/rest/v1/afm_database?select=*`,{headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`}});
@@ -482,7 +482,7 @@ return(
 <div style={{background:pr.grad,position:"sticky",top:0,zIndex:100,boxShadow:"0 4px 20px rgba(0,0,0,0.15)"}}>
 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 20px",maxWidth:1400,margin:"0 auto",flexWrap:"wrap",gap:8}}>
 <div style={{display:"flex",alignItems:"center",gap:10}}>
-<h1 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.15rem",color:"white"}}>CRM System</h1>
+<h1 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.15rem",color:"white"}}>CRM Electrigon</h1>
 <span style={{background:"rgba(255,255,255,0.25)",color:"white",padding:"2px 10px",borderRadius:14,fontSize:"0.7rem",fontWeight:700,display:"inline-flex",alignItems:"center",gap:4}}>{pr.logo?<img src={pr.logo} alt={pr.name} style={{height:16,objectFit:"contain"}}/>:null}{pr.name}</span>
 <span style={{background:rl.c,color:"white",padding:"2px 10px",borderRadius:14,fontSize:"0.68rem",fontWeight:700}}>{rl.i} {rl.l}</span>
 </div>
@@ -533,19 +533,25 @@ return(
 </div>
 :<div onClick={()=>setSbOpen(true)} style={{padding:"8px 0",textAlign:"center",cursor:"pointer",color:"rgba(255,255,255,0.4)",fontSize:"1rem"}}>🔍</div>}
 
-{[["dash","📊","Αιτήσεις",true],
-["search","🔍","Αναζήτηση",true],
+{/* Access groups: telecom = Vodafone/Cosmote/Nova/DEI Fiber, energy = Ρεύμα */}
+{(()=>{
+const grp=cu?.accessGroup||"all"; // all, telecom, energy
+const hasTelecom=grp==="all"||grp==="telecom"||cu?.role==="admin"||cu?.role==="director";
+const hasEnergy=grp==="all"||grp==="energy"||cu?.role==="admin"||cu?.role==="director";
+return[[hasTelecom?"dash":null,"📊","Αιτήσεις",hasTelecom],
+[hasTelecom?"search":null,"🔍","Αναζήτηση",hasTelecom],
 ["tix","🎫","Αιτήματα",tixEnabled||cu?.role==="admin"],
-["offers","🏷️","Προσφορές",true],
+[hasTelecom?"offers":null,"🏷️","Προσφορές",hasTelecom],
+[hasEnergy?"energy_tab":null,"⚡","Ρεύμα",hasEnergy],
 ["tools","🛠️","Εργαλεία",true],
 ["reports","📈","Reports",P.reports],
 ["users","👥","Χρήστες",P.users],
 ["admin","👑","Admin",P.adminPanel]
-].filter(x=>x[3]).map(([k,ic,l])=>
+].filter(x=>x[3]&&x[0]).map(([k,ic,l])=>
 <div key={k} onClick={()=>{setTab(k);setVM("list");setSelTix(null);}} style={{padding:sbOpen?"10px 18px":"10px 0",cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:tab===k?"rgba(255,255,255,0.1)":"transparent",borderLeft:tab===k?`3px solid ${pr.color}`:"3px solid transparent",color:tab===k?"white":"rgba(255,255,255,0.55)",transition:"all 0.2s"}}>
 <span style={{fontSize:"1rem",minWidth:20,textAlign:"center"}}>{ic}</span>
 {sbOpen&&<span style={{fontFamily:"'Outfit'",fontWeight:tab===k?700:500,fontSize:"0.82rem",whiteSpace:"nowrap"}}>{l}</span>}
-</div>)}
+</div>);})()}
 </div></div>
 
 {/* MAIN CONTENT */}
@@ -728,6 +734,7 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 
 {/* ═══ REPORTS ═══ */}
 {tab==="offers"&&<OffersPanel offers={offers} setOffers={setOffers} cu={cu} pr={pr}/>}
+{tab==="energy_tab"&&<EnergyPanel cu={cu} reqs={reqs} setReqs={setReqs} users={users} afmDb={afmDb} P={P}/>}
 {tab==="tools"&&<ToolsPanel/>}
 {tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport} expXLSX={expXLSX}/>}
 
@@ -851,7 +858,7 @@ return(
 </div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
 
-<FL l="Τύπος" req><select value={ln.type} onChange={e=>updLine(i,"type",e.target.value)} style={iS}>{pr.programs.mobile.length>0&&<option value="mobile">📱 Κινητή</option>}<option value="landline">📞 Σταθερή</option><option value="energy">⚡ Ρεύμα</option></select></FL>
+<FL l="Τύπος" req><select value={ln.type} onChange={e=>updLine(i,"type",e.target.value)} style={iS}>{pr.programs.mobile.length>0&&<option value="mobile">📱 Κινητή</option>}<option value="landline">📞 Σταθερή</option></select></FL>
 
 {/* ═══ ENERGY FIELDS ═══ */}
 {isEnergy&&<>
@@ -902,13 +909,13 @@ return(
 {(isLand||isEnergy)&&<>
 <div style={{marginTop:10,padding:14,background:isEnergy?"linear-gradient(135deg,#FFF3E0,#F5F5F5)":"linear-gradient(135deg,#E3F2FD,#F5F5F5)",borderRadius:10,border:`1px solid ${isEnergy?"#FFB74D":"#90CAF9"}`}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-<span style={{fontWeight:700,fontSize:"0.88rem",color:"#1565C0"}}>📍 Διεύθυνση Εγκατάστασης</span>
+<span style={{fontWeight:700,fontSize:"0.88rem",color:isEnergy?"#E65100":"#1565C0"}}>📍 Διεύθυνση Εγκατάστασης</span>
 <div style={{display:"flex",gap:6}}>
 <button onClick={()=>updLineMulti(i,{instAddr:form.addr,instCity:form.city,instTk:form.tk})} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #1565C0",background:"white",color:"#1565C0",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Κύρια</button>
 {form.billAddr&&<button onClick={()=>updLineMulti(i,{instAddr:form.billAddr,instCity:form.billCity,instTk:form.billTk})} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #FF6F00",background:"white",color:"#FF6F00",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Λογ/σμών</button>}
 </div>
 </div>
-<div style={{display:"grid",gridTemplateColumns:"1fr 150px 90px 130px 130px",gap:8,alignItems:"end"}}>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
 <FL l="Διεύθυνση"><input value={ln.instAddr||""} onChange={e=>updLine(i,"instAddr",e.target.value)} placeholder="Οδός & αριθμός" style={iS}/></FL>
 <FL l="Πόλη"><input value={ln.instCity||""} onChange={e=>updLine(i,"instCity",e.target.value)} style={iS}/></FL>
 <FL l="ΤΚ"><input value={ln.instTk||""} onChange={e=>updLine(i,"instTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} maxLength={5} style={iS}/></FL>
@@ -1407,6 +1414,150 @@ setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Απ
 
 </div>);}
 
+// ═══ ENERGY PANEL ═══
+function EnergyPanel({cu,reqs,setReqs,users,afmDb,P}){
+const[mode,setMode]=useState("list"); // list, form, detail
+const[sel,setSel]=useState(null);
+const energyReqs=reqs.filter(r=>r.prov==="energy"&&(r.status!=="draft"||r.agentId===cu.id));
+const iS={width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid #DDD",fontSize:"0.82rem"};
+const[form,setForm]=useState(null);
+const s=(k,v)=>setForm(p=>({...p,[k]:v}));
+
+const newForm=()=>{
+  setForm({id:"",ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",
+    partner:cu.partner||"",agentId:cu.id,agentName:cu.name,status:"draft",notes:"",created:"",prov:"energy",
+    energyLines:[{id:Date.now(),eProv:"dei",prog:"",progCustom:"",price:"",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:"",fromProv:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""}],
+    startDate:"",duration:"24",endDate:"",creditDate:"",docs:[]
+  });
+  setMode("form");
+};
+
+const addEnergyLine=()=>s("energyLines",[...(form.energyLines||[]),{id:Date.now(),eProv:"dei",prog:"",progCustom:"",price:"",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:"",fromProv:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""}]);
+
+const updEL=(i,k,v)=>setForm(p=>{const nl=[...(p.energyLines||[])];if(nl[i])nl[i]={...nl[i],[k]:v};return{...p,energyLines:nl};});
+const updELMulti=(i,up)=>setForm(p=>{const nl=[...(p.energyLines||[])];if(nl[i])nl[i]={...nl[i],...up};return{...p,energyLines:nl};});
+const rmEL=(i)=>setForm(p=>({...p,energyLines:(p.energyLines||[]).filter((_,j)=>j!==i)}));
+
+const saveEnergy=async(asStatus)=>{
+  if(!form.ln||!form.afm){alert("Συμπληρώστε Επώνυμο και ΑΦΜ");return;}
+  const nextNum=reqs.reduce((mx,r)=>{const m=r.id?.match(/REQ-(\d+)/);return m?Math.max(mx,parseInt(m[1])):mx;},0)+1;
+  const id=form.id||`REQ-${String(nextNum).padStart(5,"0")}`;
+  const nr={...form,id,status:asStatus,prov:"energy",created:form.created||new Date().toISOString(),lines:form.energyLines||[]};
+  setReqs(p=>form.id?p.map(r=>r.id===form.id?nr:r):[nr,...p]);
+  setMode("list");setForm(null);
+  if(USE_SUPA){try{
+    const dbRow={id:nr.id,provider:"energy",ln:nr.ln,fn:nr.fn,fat:nr.fat||"",bd:nr.bd||"",adt:nr.adt||"",ph:nr.ph||"",mob:nr.mob||"",em:nr.em||"",afm:nr.afm,doy:nr.doy||"",tk:nr.tk||"",addr:nr.addr||"",city:nr.city||"",partner:nr.partner,agent_id:nr.agentId,agent_name:nr.agentName,status:asStatus,notes:nr.notes||"",created:nr.created,start_date:nr.startDate||"",duration:nr.duration||"24",end_date:nr.endDate||"",credit_date:nr.creditDate||"",lines:JSON.stringify(nr.lines||[]),documents:"[]"};
+    if(form.id){await supa.from("requests").update(dbRow).eq("id",form.id);}
+    else{await supa.from("requests").insert(dbRow);}
+  }catch(e){console.error("Energy save error:",e);}}
+};
+
+if(mode==="form"&&form)return(
+<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900}}>⚡ {form.id?"Επεξεργασία":"Νέα Αίτηση"} Ρεύματος</h1>
+<button onClick={()=>{setMode("list");setForm(null);}} style={{padding:"6px 16px",borderRadius:6,border:"1px solid #C62828",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontWeight:600}}>✖ Ακύρωση</button>
+</div>
+
+{/* Customer Info */}
+<div style={{background:"white",borderRadius:12,padding:16,marginBottom:12,border:"1px solid #E0E0E0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Στοιχεία Πελάτη</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+<FL l="Επώνυμο" req><input value={form.ln} onChange={e=>s("ln",e.target.value)} style={iS}/></FL>
+<FL l="Όνομα" req><input value={form.fn} onChange={e=>s("fn",e.target.value)} style={iS}/></FL>
+<FL l="ΑΦΜ" req><input value={form.afm} onChange={e=>s("afm",e.target.value.replace(/\D/g,"").slice(0,9))} maxLength={9} style={iS}/></FL>
+<FL l="Κινητό"><input value={form.mob} onChange={e=>s("mob",e.target.value.replace(/\D/g,"").slice(0,10))} style={iS}/></FL>
+<FL l="Email"><input value={form.em} onChange={e=>s("em",e.target.value)} style={iS}/></FL>
+<FL l="Διεύθυνση"><input value={form.addr} onChange={e=>s("addr",e.target.value)} style={iS}/></FL>
+<FL l="Πόλη"><input value={form.city} onChange={e=>s("city",e.target.value)} style={iS}/></FL>
+<FL l="ΤΚ"><input value={form.tk} onChange={e=>s("tk",e.target.value.replace(/\D/g,"").slice(0,5))} style={iS}/></FL>
+</div></div>
+
+{/* Energy Lines */}
+<div style={{background:"white",borderRadius:12,padding:16,marginBottom:12,border:"1px solid #E0E0E0"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>⚡ Παροχές Ρεύματος ({(form.energyLines||[]).length})</div>
+<button onClick={addEnergyLine} style={{padding:"5px 14px",borderRadius:6,border:"none",background:"#FF6F00",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>➕ Προσθήκη Παροχής</button>
+</div>
+{(form.energyLines||[]).map((el,i)=>{
+const eProgs=ENERGY_PROVIDERS[el.eProv]?.programs||[];
+return(
+<div key={el.id} style={{background:"#FFFBF0",border:"1px solid #FFB74D",borderRadius:10,padding:12,marginBottom:10,borderLeft:"4px solid #FF6F00"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<span style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.82rem",color:"#E65100"}}>⚡ Παροχή {i+1} — {ENERGY_PROVIDERS[el.eProv]?.name||""}</span>
+{(form.energyLines||[]).length>1&&<button onClick={()=>rmEL(i)} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:6,padding:"3px 10px",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>🗑️</button>}
+</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+<FL l="Πάροχος Ρεύματος" req><select value={el.eProv} onChange={e=>{updELMulti(i,{eProv:e.target.value,prog:"",progCustom:""});}} style={{...iS,fontWeight:600}}>{Object.entries(ENERGY_PROVIDERS).map(([k,ep])=><option key={k} value={k}>{ep.name}</option>)}</select></FL>
+<FL l="Πρόγραμμα" req><input list={`elp_${el.id}`} value={el.progCustom||el.prog||""} onChange={e=>updELMulti(i,{prog:e.target.value,progCustom:e.target.value})} placeholder="Επιλέξτε ή πληκτρολογήστε" style={iS}/><datalist id={`elp_${el.id}`}>{eProgs.map(x=><option key={x} value={x}/>)}</datalist></FL>
+<FL l="Τιμή (€)"><input type="number" value={el.price} onChange={e=>updEL(i,"price",e.target.value)} placeholder="0.00" style={iS}/></FL>
+<FL l="Τύπος Τιμολογίου"><select value={el.eInvoiceColor} onChange={e=>updEL(i,"eInvoiceColor",e.target.value)} style={iS}>{INVOICE_COLORS.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Τύπος Ρεύματος"><select value={el.eType} onChange={e=>updEL(i,"eType",e.target.value)} style={iS}>{ENERGY_TYPES.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Τιμολόγηση"><select value={el.eBilling} onChange={e=>updEL(i,"eBilling",e.target.value)} style={iS}>{BILLING_TYPES.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Τρόπος Πληρωμής"><select value={el.ePayment} onChange={e=>updEL(i,"ePayment",e.target.value)} style={iS}>{PAYMENT_METHODS.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Ενέργεια"><select value={el.eAction} onChange={e=>updEL(i,"eAction",e.target.value)} style={iS}>{ENERGY_ACTIONS.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Κατάσταση Παροχής"><select value={el.eConnStatus} onChange={e=>updEL(i,"eConnStatus",e.target.value)} style={{...iS,background:el.eConnStatus?.includes("Κομμένο")?"#FFEBEE":"#E8F5E9",fontWeight:600,color:el.eConnStatus?.includes("Κομμένο")?"#C62828":"#2E7D32"}}>{CONN_STATUS.map(x=><option key={x}>{x}</option>)}</select></FL>
+<FL l="Αριθμός Παροχής"><input value={el.eParochi||""} onChange={e=>updEL(i,"eParochi",e.target.value.replace(/[^\d]/g,""))} style={iS}/></FL>
+<FL l="ΗΚΑΣΠ"><input value={el.eHkasp||""} onChange={e=>updEL(i,"eHkasp",e.target.value)} style={iS}/></FL>
+{(el.eAction?.includes("Αλλαγή Παρόχου"))&&<FL l="Από Πάροχο"><select value={el.fromProv||""} onChange={e=>updEL(i,"fromProv",e.target.value)} style={iS}><option value="">—</option>{Object.values(ENERGY_PROVIDERS).map(ep=><option key={ep.name}>{ep.name}</option>)}</select></FL>}
+</div>
+{/* Installation Address */}
+<div style={{marginTop:10,padding:12,background:"linear-gradient(135deg,#FFF3E0,#F5F5F5)",borderRadius:8,border:"1px solid #FFB74D"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<span style={{fontWeight:700,fontSize:"0.82rem",color:"#E65100"}}>📍 Διεύθυνση Εγκατάστασης</span>
+<button onClick={()=>updELMulti(i,{instAddr:form.addr,instCity:form.city,instTk:form.tk})} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #E65100",background:"white",color:"#E65100",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>📋 Κύρια</button>
+</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+<FL l="Διεύθυνση"><input value={el.instAddr||""} onChange={e=>updEL(i,"instAddr",e.target.value)} style={iS}/></FL>
+<FL l="Πόλη"><input value={el.instCity||""} onChange={e=>updEL(i,"instCity",e.target.value)} style={iS}/></FL>
+<FL l="ΤΚ"><input value={el.instTk||""} onChange={e=>updEL(i,"instTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} style={iS}/></FL>
+<FL l="📌 Lat"><input value={el.instLat||""} onChange={e=>updEL(i,"instLat",e.target.value)} placeholder="37.9838" style={iS}/></FL>
+<FL l="📌 Lng"><input value={el.instLng||""} onChange={e=>updEL(i,"instLng",e.target.value)} placeholder="23.7275" style={iS}/></FL>
+</div>
+{el.instLat&&el.instLng&&<div style={{marginTop:4}}><a href={`https://www.google.com/maps?q=${el.instLat},${el.instLng}`} target="_blank" rel="noreferrer" style={{fontSize:"0.72rem",color:"#1565C0",fontWeight:600}}>🗺️ Χάρτης</a></div>}
+</div>
+</div>);})}
+</div>
+
+{/* Notes */}
+<div style={{background:"white",borderRadius:12,padding:16,marginBottom:12,border:"1px solid #E0E0E0"}}>
+<FL l="Σημειώσεις"><textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></FL>
+</div>
+
+{/* Save Buttons */}
+<div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+<button onClick={()=>saveEnergy("draft")} style={{padding:"10px 32px",borderRadius:8,border:"none",background:"#78909C",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.88rem"}}>💾 Αποθήκευση</button>
+<button onClick={()=>saveEnergy("sent")} style={{padding:"10px 32px",borderRadius:8,border:"none",background:"#FF6F00",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.88rem"}}>📤 Αποστολή</button>
+<button onClick={()=>{setMode("list");setForm(null);}} style={{padding:"10px 32px",borderRadius:8,border:"none",background:"#FF5722",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.88rem"}}>✖ Ακύρωση</button>
+</div>
+</div>);
+
+// LIST VIEW
+return(
+<div style={{padding:20,maxWidth:1100,margin:"0 auto"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900}}>⚡ Αιτήσεις Ρεύματος</h1>
+<button onClick={newForm} style={{padding:"8px 20px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#FF6F00,#F4511E)",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.84rem"}}>➕ Νέα Αίτηση Ρεύματος</button>
+</div>
+{energyReqs.length===0?<div style={{textAlign:"center",padding:40,color:"#999",fontSize:"0.9rem"}}>Δεν υπάρχουν αιτήσεις ρεύματος</div>
+:<div style={{background:"white",borderRadius:12,overflow:"hidden",border:"1px solid #E0E0E0"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.78rem"}}>
+<thead><tr style={{background:"linear-gradient(135deg,#FF6F00,#F4511E)",color:"white"}}>
+{["ID","Πελάτης","ΑΦΜ","Πάροχος","Πρόγραμμα","Κατάσταση","Ημ/νία"].map(h=><th key={h} style={{padding:"8px 10px",textAlign:"left",fontWeight:700}}>{h}</th>)}
+</tr></thead>
+<tbody>{energyReqs.map(r=>{const st=ST[r.status]||{};const eLine=(r.lines||r.energyLines||[])[0]||{};
+return(<tr key={r.id} onClick={()=>{setSel(r);setForm({...r,energyLines:r.lines||r.energyLines||[]});setMode("form");}} style={{borderBottom:"1px solid #F0F0F0",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#FFF8E1"} onMouseOut={e=>e.currentTarget.style.background=""}>
+<td style={{padding:"8px 10px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
+<td style={{padding:"8px 10px"}}>{r.ln} {r.fn}</td>
+<td style={{padding:"8px 10px"}}>{r.afm}</td>
+<td style={{padding:"8px 10px"}}>{ENERGY_PROVIDERS[eLine.eProv]?.name||"—"}</td>
+<td style={{padding:"8px 10px"}}>{eLine.progCustom||eLine.prog||"—"}</td>
+<td style={{padding:"8px 10px"}}><span style={{padding:"2px 8px",borderRadius:4,fontSize:"0.68rem",fontWeight:700,background:st.bg,color:st.c}}>{st.i} {st.l}</span></td>
+<td style={{padding:"8px 10px"}}>{fmtDate(r.created)}</td>
+</tr>);})}</tbody></table></div>}
+</div>);
+}
+
 // ═══ TOOLS PANEL ═══
 function ToolsPanel(){
 const[convFile,setConvFile]=useState(null);
@@ -1551,6 +1702,8 @@ const[invoicePref,setInvoicePref]=useState("all");
 const[analyzing,setAnalyzing]=useState(false);
 const[result,setResult]=useState(null);
 const[error,setError]=useState("");
+const[manualMode,setManualMode]=useState(false);
+const[manual,setManual]=useState({provider:"",consumption_kwh:"",price_per_kwh:"",monthly_fee:"",period_months:"4"});
 
 const KNOWN_PLANS={
   blue:[
@@ -1558,7 +1711,7 @@ const KNOWN_PLANS={
     {prov:"ΗΡΩΝ",prog:"Blue Generous Max Home",kwh:0.0945,pagio:9.9},
     {prov:"Protergia",prog:"Value Secure 12M",kwh:0.099,pagio:9.9},
     {prov:"NRG",prog:"Fixed OnTime Advanced",kwh:0.099,pagio:9.9},
-    {prov:"Elpedison",prog:"Reward Maximum",kwh:0.088,pagio:12.9},
+    {prov:"Enerwave",prog:"Reward Maximum",kwh:0.088,pagio:12.9},
     {prov:"ΔΕΗ",prog:"myHome Enter",kwh:0.145,pagio:5.0},
     {prov:"Φυσικό Αέριο",prog:"HOME FIXED",kwh:0.139,pagio:9.9},
     {prov:"Watt+Volt",prog:"Value Home Blue",kwh:0.109,pagio:7.9},
@@ -1568,7 +1721,7 @@ const KNOWN_PLANS={
     {prov:"ΗΡΩΝ",prog:"Protect Home",kwh:0.159,pagio:5.5},
     {prov:"Protergia",prog:"Value Pulse",kwh:0.091,pagio:5.0},
     {prov:"NRG",prog:"@cost+",kwh:0.147,pagio:7.1},
-    {prov:"Elpedison",prog:"Reward Saver",kwh:0.150,pagio:7.9},
+    {prov:"Enerwave",prog:"Reward Saver",kwh:0.150,pagio:7.9},
     {prov:"Volton",prog:"Yellow Flat",kwh:0.099,pagio:9.9},
   ],
   green:[
@@ -1580,67 +1733,69 @@ const KNOWN_PLANS={
   ]
 };
 
-const handleFile=(e)=>{
-  const f=e.target.files[0];
-  if(!f)return;
-  setBillFile(f);setResult(null);setError("");
-  if(f.type.startsWith("image/")){
-    const reader=new FileReader();
-    reader.onload=ev=>setBillPreview(ev.target.result);
-    reader.readAsDataURL(f);
-  }else{setBillPreview(null);}
+const calcRecommendations=(kwh,pricePerKwh,monthlyFee,months)=>{
+  const currentCost=kwh*pricePerKwh+monthlyFee*months;
+  const filterKey=invoicePref==="all"?null:invoicePref;
+  let plans=[];
+  if(filterKey){plans=KNOWN_PLANS[filterKey]||[];}
+  else{plans=[...KNOWN_PLANS.blue,...KNOWN_PLANS.orange,...KNOWN_PLANS.green];}
+  const recommendations=plans.map(p=>{
+    const cost=kwh*p.kwh+p.pagio*months;
+    const saving=currentCost-cost;
+    const colorTag=KNOWN_PLANS.blue.includes(p)?"🔵":KNOWN_PLANS.orange.includes(p)?"🟠":"🟢";
+    return{...p,cost,saving,monthlySaving:(saving/months),colorTag};
+  }).filter(p=>p.saving>0).sort((a,b)=>b.saving-a.saving).slice(0,5);
+  return{recommendations,currentCost};
 };
 
-const analyze=async()=>{
+const handleFile=(e)=>{
+  const f=e.target.files[0];if(!f)return;
+  setBillFile(f);setResult(null);setError("");
+  if(f.type.startsWith("image/")){const reader=new FileReader();reader.onload=ev=>setBillPreview(ev.target.result);reader.readAsDataURL(f);}else{setBillPreview(null);}
+};
+
+const analyzeAI=async()=>{
   if(!billFile){setError("Επιλέξτε αρχείο πρώτα");return;}
   setAnalyzing(true);setError("");setResult(null);
   try{
     const base64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=()=>rej(new Error("Read failed"));r.readAsDataURL(billFile);});
-    const mediaType=billFile.type.startsWith("image/")?(billFile.type==="image/png"?"image/png":"image/jpeg"):(billFile.type==="application/pdf"?"application/pdf":"image/jpeg");
+    const mediaType=billFile.type==="image/png"?"image/png":billFile.type==="application/pdf"?"application/pdf":"image/jpeg";
     const contentBlock=mediaType==="application/pdf"?{type:"document",source:{type:"base64",media_type:"application/pdf",data:base64}}:{type:"image",source:{type:"base64",media_type:mediaType,data:base64}};
     const response=await fetch("https://api.anthropic.com/v1/messages",{
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:1000,
-        messages:[{role:"user",content:[
-          contentBlock,
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,
+        messages:[{role:"user",content:[contentBlock,
           {type:"text",text:`Ανέλυσε αυτόν τον λογαριασμό ρεύματος. Εξήγαγε τα στοιχεία σε JSON μορφή ΜΟΝΟ (χωρίς markdown, χωρίς backticks):
-{"provider":"όνομα παρόχου","plan":"όνομα προγράμματος","consumption_kwh":αριθμός κατανάλωσης σε kWh,"price_per_kwh":τιμή ανά kWh σε ευρώ,"monthly_fee":πάγιο σε ευρώ ανά μήνα,"total_amount":συνολικό ποσό,"supply_number":"αριθμός παροχής","hkasp":"ΗΚΑΣΠ αν υπάρχει","address":"διεύθυνση εγκατάστασης","tariff_type":"Γ1 ή Γ21 ή Γ22","billing_type":"Κανονικό ή Νυχτερινό","period_months":πόσοι μήνες καλύπτει ο λογαριασμός}
-Αν δεν βρεις κάποιο πεδίο βάλε null. Απάντησε ΜΟΝΟ με JSON.`}
-        ]}]
-      })
+{"provider":"","plan":"","consumption_kwh":0,"price_per_kwh":0,"monthly_fee":0,"total_amount":0,"supply_number":"","hkasp":"","address":"","tariff_type":"","billing_type":"","period_months":0}
+Αν δεν βρεις κάποιο πεδίο βάλε null. Απάντησε ΜΟΝΟ με JSON.`}]}]})
     });
+    if(!response.ok){const errTxt=await response.text();throw new Error(`API error ${response.status}: ${errTxt}`);}
     const data=await response.json();
     const txt=data.content?.map(c=>c.text||"").join("")||"";
     const clean=txt.replace(/```json|```/g,"").trim();
     const parsed=JSON.parse(clean);
-    
-    // Calculate recommendations
     const kwh=parsed.consumption_kwh||0;
     const months=parsed.period_months||4;
-    const monthlyKwh=kwh/months;
-    const currentCost=kwh*(parsed.price_per_kwh||0)+(parsed.monthly_fee||0)*months;
-    
-    const filterKey=invoicePref==="all"?null:invoicePref;
-    let plans=[];
-    if(filterKey){plans=KNOWN_PLANS[filterKey]||[];}
-    else{plans=[...KNOWN_PLANS.blue,...KNOWN_PLANS.orange,...KNOWN_PLANS.green];}
-    
-    const recommendations=plans.map(p=>{
-      const cost=kwh*p.kwh+p.pagio*months;
-      const saving=currentCost-cost;
-      const colorTag=KNOWN_PLANS.blue.includes(p)?"🔵":KNOWN_PLANS.orange.includes(p)?"🟠":"🟢";
-      return{...p,cost,saving,monthlySaving:(saving/months),colorTag};
-    }).filter(p=>p.saving>0).sort((a,b)=>b.saving-a.saving).slice(0,5);
-    
+    const{recommendations,currentCost}=calcRecommendations(kwh,parsed.price_per_kwh||0,parsed.monthly_fee||0,months);
     setResult({bill:parsed,recommendations,currentCost,kwh,months});
   }catch(e){
-    console.error("Analysis error:",e);
-    setError("Σφάλμα ανάλυσης: "+e.message);
+    console.error("AI Analysis error:",e);
+    setError("Η AI ανάλυση δεν είναι διαθέσιμη. Χρησιμοποιήστε τη χειροκίνητη εισαγωγή. ("+e.message+")");
+    setManualMode(true);
   }
   setAnalyzing(false);
+};
+
+const analyzeManual=()=>{
+  const kwh=parseFloat(manual.consumption_kwh)||0;
+  const priceKwh=parseFloat(manual.price_per_kwh)||0;
+  const fee=parseFloat(manual.monthly_fee)||0;
+  const months=parseInt(manual.period_months)||4;
+  if(!kwh||!priceKwh){setError("Συμπληρώστε κατανάλωση και τιμή/kWh");return;}
+  const{recommendations,currentCost}=calcRecommendations(kwh,priceKwh,fee,months);
+  setResult({bill:{provider:manual.provider,consumption_kwh:kwh,price_per_kwh:priceKwh,monthly_fee:fee,period_months:months},recommendations,currentCost,kwh,months});
+  setError("");
 };
 
 const prefColors=[
@@ -1649,45 +1804,64 @@ const prefColors=[
   {key:"orange",label:"🟠 Πορτοκαλί",bg:"#FFF3E0",color:"#E65100"},
   {key:"green",label:"🟢 Πράσινο",bg:"#E8F5E9",color:"#2E7D32"},
 ];
+const iS={width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid #DDD",fontSize:"0.82rem"};
 
 return(
 <div style={{background:"white",borderRadius:12,padding:20,marginTop:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",border:"1px solid #E0E0E0"}}>
 <h2 style={{fontFamily:"'Outfit'",fontSize:"1.1rem",fontWeight:700,marginBottom:4}}>⚡ Ανάλυση Λογαριασμού Ρεύματος</h2>
-<p style={{fontSize:"0.8rem",color:"#666",marginBottom:14}}>Ανεβάστε φωτογραφία ή PDF λογαριασμού — το AI θα εξάγει τα στοιχεία και θα προτείνει οικονομικότερα προγράμματα</p>
+<p style={{fontSize:"0.8rem",color:"#666",marginBottom:14}}>Ανεβάστε λογαριασμό ή εισάγετε χειροκίνητα τα στοιχεία για σύγκριση προγραμμάτων</p>
 
-<div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginBottom:12}}>
-<input type="file" accept="image/*,.pdf" onChange={handleFile} style={{flex:1,fontSize:"0.82rem"}}/>
+{/* Mode toggle */}
+<div style={{display:"flex",gap:6,marginBottom:14}}>
+<button onClick={()=>setManualMode(false)} style={{padding:"6px 16px",borderRadius:8,border:!manualMode?"2px solid #FF6F00":"2px solid transparent",background:!manualMode?"#FFF3E0":"#F5F5F5",color:!manualMode?"#E65100":"#666",cursor:"pointer",fontWeight:600,fontSize:"0.82rem"}}>📸 AI Ανάλυση</button>
+<button onClick={()=>setManualMode(true)} style={{padding:"6px 16px",borderRadius:8,border:manualMode?"2px solid #FF6F00":"2px solid transparent",background:manualMode?"#FFF3E0":"#F5F5F5",color:manualMode?"#E65100":"#666",cursor:"pointer",fontWeight:600,fontSize:"0.82rem"}}>✏️ Χειροκίνητα</button>
 </div>
 
-{billPreview&&<div style={{marginBottom:12,textAlign:"center"}}><img src={billPreview} alt="Λογαριασμός" style={{maxWidth:"100%",maxHeight:200,borderRadius:8,border:"1px solid #E0E0E0"}}/></div>}
-{billFile&&<div style={{fontSize:"0.78rem",color:"#333",marginBottom:10}}>📎 {billFile.name} ({(billFile.size/1024).toFixed(1)} KB)</div>}
+{/* AI Mode */}
+{!manualMode&&<div style={{marginBottom:14}}>
+<input type="file" accept="image/*,.pdf" onChange={handleFile} style={{marginBottom:8,fontSize:"0.82rem"}}/>
+{billPreview&&<div style={{marginBottom:8,textAlign:"center"}}><img src={billPreview} alt="Bill" style={{maxWidth:"100%",maxHeight:180,borderRadius:8,border:"1px solid #E0E0E0"}}/></div>}
+{billFile&&<div style={{fontSize:"0.78rem",color:"#333",marginBottom:8}}>📎 {billFile.name} ({(billFile.size/1024).toFixed(1)} KB)</div>}
+</div>}
 
+{/* Manual Mode */}
+{manualMode&&<div style={{background:"#FFFBF0",borderRadius:10,padding:14,marginBottom:14,border:"1px solid #FFB74D"}}>
+<div style={{fontWeight:700,fontSize:"0.82rem",marginBottom:8,color:"#E65100"}}>✏️ Εισαγωγή στοιχείων λογαριασμού</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
+<FL l="Τρέχων Πάροχος"><input value={manual.provider} onChange={e=>setManual(p=>({...p,provider:e.target.value}))} placeholder="π.χ. ΔΕΗ" style={iS}/></FL>
+<FL l="Κατανάλωση (kWh)" req><input type="number" value={manual.consumption_kwh} onChange={e=>setManual(p=>({...p,consumption_kwh:e.target.value}))} placeholder="π.χ. 850" style={iS}/></FL>
+<FL l="Τιμή/kWh (€)" req><input type="number" step="0.001" value={manual.price_per_kwh} onChange={e=>setManual(p=>({...p,price_per_kwh:e.target.value}))} placeholder="π.χ. 0.152" style={iS}/></FL>
+<FL l="Πάγιο/μήνα (€)"><input type="number" value={manual.monthly_fee} onChange={e=>setManual(p=>({...p,monthly_fee:e.target.value}))} placeholder="π.χ. 5" style={iS}/></FL>
+<FL l="Περίοδος (μήνες)"><select value={manual.period_months} onChange={e=>setManual(p=>({...p,period_months:e.target.value}))} style={iS}><option value="1">1 μήνας</option><option value="2">2 μήνες</option><option value="4">4 μήνες (τετράμηνο)</option><option value="6">6 μήνες</option><option value="12">12 μήνες</option></select></FL>
+</div>
+</div>}
+
+{/* Invoice preference */}
 <div style={{marginBottom:14}}>
 <div style={{fontSize:"0.78rem",fontWeight:700,marginBottom:6}}>Προτίμηση τιμολογίου:</div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-{prefColors.map(pc=><button key={pc.key} onClick={()=>setInvoicePref(pc.key)} style={{padding:"6px 16px",borderRadius:8,border:invoicePref===pc.key?`2px solid ${pc.color}`:"2px solid transparent",background:pc.bg,color:pc.color,cursor:"pointer",fontWeight:invoicePref===pc.key?700:500,fontSize:"0.82rem",transition:"all 0.2s"}}>{pc.label}</button>)}
+{prefColors.map(pc=><button key={pc.key} onClick={()=>{setInvoicePref(pc.key);setResult(null);}} style={{padding:"6px 16px",borderRadius:8,border:invoicePref===pc.key?`2px solid ${pc.color}`:"2px solid transparent",background:pc.bg,color:pc.color,cursor:"pointer",fontWeight:invoicePref===pc.key?700:500,fontSize:"0.82rem"}}>{pc.label}</button>)}
 </div>
 </div>
 
-<button onClick={analyze} disabled={!billFile||analyzing} style={{padding:"10px 24px",borderRadius:8,border:"none",background:billFile&&!analyzing?"linear-gradient(135deg,#FF6F00,#F4511E)":"#CCC",color:"white",cursor:billFile&&!analyzing?"pointer":"not-allowed",fontWeight:700,fontSize:"0.88rem",width:"100%"}}>
-{analyzing?"⏳ Ανάλυση σε εξέλιξη...":"🔍 Ανάλυση & Πρόταση"}
-</button>
+{/* Action button */}
+{manualMode?
+<button onClick={analyzeManual} style={{padding:"10px 24px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#FF6F00,#F4511E)",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.88rem",width:"100%"}}>🔍 Σύγκριση Προγραμμάτων</button>
+:<button onClick={analyzeAI} disabled={!billFile||analyzing} style={{padding:"10px 24px",borderRadius:8,border:"none",background:billFile&&!analyzing?"linear-gradient(135deg,#FF6F00,#F4511E)":"#CCC",color:"white",cursor:billFile&&!analyzing?"pointer":"not-allowed",fontWeight:700,fontSize:"0.88rem",width:"100%"}}>
+{analyzing?"⏳ Ανάλυση σε εξέλιξη...":"🔍 AI Ανάλυση & Πρόταση"}</button>}
 
 {error&&<div style={{marginTop:10,padding:10,background:"#FFEBEE",borderRadius:8,color:"#C62828",fontSize:"0.78rem",fontWeight:600}}>{error}</div>}
 
 {result&&<div style={{marginTop:16}}>
-{/* Extracted Bill Data */}
 <div style={{background:"#F5F5F5",borderRadius:10,padding:14,marginBottom:14}}>
-<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.92rem",marginBottom:10,color:"#333"}}>📋 Στοιχεία Λογαριασμού</div>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.92rem",marginBottom:10}}>📋 Στοιχεία Λογαριασμού</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:8}}>
-{[["Πάροχος",result.bill.provider],["Πρόγραμμα",result.bill.plan],["Κατανάλωση",result.bill.consumption_kwh?result.bill.consumption_kwh+" kWh":null],["Τιμή/kWh",result.bill.price_per_kwh?"€"+result.bill.price_per_kwh:null],["Πάγιο/μήνα",result.bill.monthly_fee?"€"+result.bill.monthly_fee:null],["Σύνολο",result.bill.total_amount?"€"+result.bill.total_amount:null],["Αρ. Παροχής",result.bill.supply_number],["ΗΚΑΣΠ",result.bill.hkasp],["Τιμολόγιο",result.bill.tariff_type],["Τιμολόγηση",result.bill.billing_type],["Διεύθυνση",result.bill.address],["Περίοδος",result.bill.period_months?result.bill.period_months+" μήνες":null]].filter(([,v])=>v).map(([l,v])=>
-<div key={l} style={{background:"white",borderRadius:6,padding:8}}><div style={{fontSize:"0.65rem",color:"#888",fontWeight:600,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"0.82rem",fontWeight:600}}>{v}</div></div>
-)}
+{[["Πάροχος",result.bill.provider],["Κατανάλωση",result.kwh?result.kwh+" kWh":null],["Τιμή/kWh",result.bill.price_per_kwh?"€"+result.bill.price_per_kwh:null],["Πάγιο/μήνα",result.bill.monthly_fee?"€"+result.bill.monthly_fee:null],["Περίοδος",result.months?result.months+" μήνες":null],["Τρέχον κόστος","€"+result.currentCost.toFixed(2)]].filter(([,v])=>v).map(([l,v])=>
+<div key={l} style={{background:"white",borderRadius:6,padding:8}}><div style={{fontSize:"0.65rem",color:"#888",fontWeight:600,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"0.82rem",fontWeight:600}}>{v}</div></div>)}
 </div>
-{result.currentCost>0&&<div style={{marginTop:8,padding:8,background:"#FFF3E0",borderRadius:6,fontSize:"0.82rem"}}>💰 Τρέχον κόστος: <strong>€{result.currentCost.toFixed(2)}</strong> για {result.months} μήνες ({result.kwh} kWh)</div>}
+{result.bill.supply_number&&<div style={{marginTop:6,fontSize:"0.78rem"}}>📍 Αρ. Παροχής: <strong>{result.bill.supply_number}</strong>{result.bill.hkasp?` | ΗΚΑΣΠ: ${result.bill.hkasp}`:""}{result.bill.address?` | ${result.bill.address}`:""}</div>}
 </div>
 
-{/* Recommendations */}
 {result.recommendations.length>0?<div>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.92rem",marginBottom:10,color:"#2E7D32"}}>💡 Προτάσεις {invoicePref!=="all"?`(${prefColors.find(p=>p.key===invoicePref)?.label})`:"(Όλα)"}</div>
 {result.recommendations.map((rec,i)=>(
