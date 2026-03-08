@@ -563,6 +563,7 @@ return[[hasTelecom?"dash":null,"📊","Αιτήσεις",hasTelecom],
 <div><h1 style={{fontFamily:"'Outfit'",fontSize:"1.8rem",fontWeight:900,letterSpacing:-1}}>{pr.name}</h1><p style={{color:"#888",fontSize:"0.82rem"}}>{rl.i} {rl.l}</p></div>
 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
 {(cu.role==="admin"||cu.cc&&P.create)?<button onClick={()=>setVM("form")} style={B(pr.grad,"white",{padding:"9px 20px"})}>➕ Νέα Αίτηση</button>:null}
+{(cu.role==="admin"||cu.cc)&&(cu.accessGroup==="all"||cu.accessGroup==="energy"||cu.role==="admin"||cu.role==="director")?<button onClick={()=>setTab("energy_tab")} style={B("linear-gradient(135deg,#FF6F00,#F4511E)","white",{padding:"9px 20px"})}>⚡ Νέα Αίτηση Ρεύματος</button>:null}
 {P.exp?<button onClick={()=>expXLSX(fr)} style={B("#FFF","#333",{border:"1px solid #DDD",padding:"9px 16px"})}>📊 Excel</button>:null}
 </div></div>
 
@@ -1459,18 +1460,18 @@ if(mode==="form"&&form)return(
 <button onClick={()=>{setMode("list");setForm(null);}} style={{padding:"6px 16px",borderRadius:6,border:"1px solid #C62828",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontWeight:600}}>✖ Ακύρωση</button>
 </div>
 
-{/* Customer Info */}
+{/* Customer Info with AFM Lookup */}
 <div style={{background:"white",borderRadius:12,padding:16,marginBottom:12,border:"1px solid #E0E0E0"}}>
-<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Στοιχεία Πελάτη</div>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem"}}>👤 Στοιχεία Πελάτη</div>
+<div style={{display:"flex",gap:6,alignItems:"center"}}>
+<input placeholder="ΑΦΜ..." value={form._afmQ||""} onChange={e=>s("_afmQ",e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){const q=(form._afmQ||"").trim();if(!q)return;const r=afmDb.find(x=>x.afm===q);if(r){s("_afmQ","");setForm(p=>({...p,ln:r.ln||p.ln,fn:r.fn||p.fn,fat:r.fat||p.fat,bd:r.bd||p.bd,adt:r.adt||p.adt,ph:r.ph||p.ph,mob:r.mob||p.mob,em:r.em||p.em,afm:r.afm||p.afm,doy:r.doy||p.doy,tk:r.tk||p.tk,addr:r.addr||p.addr,city:r.city||p.city}));}else{alert("Δεν βρέθηκε στη βάση");}}}} style={{padding:"6px 10px",borderRadius:6,border:"1px solid #FFC107",fontSize:"0.78rem",width:140}}/>
+<button onClick={()=>{const q=(form._afmQ||"").trim();if(!q)return;const r=afmDb.find(x=>x.afm===q);if(r){s("_afmQ","");setForm(p=>({...p,ln:r.ln||p.ln,fn:r.fn||p.fn,fat:r.fat||p.fat,bd:r.bd||p.bd,adt:r.adt||p.adt,ph:r.ph||p.ph,mob:r.mob||p.mob,em:r.em||p.em,afm:r.afm||p.afm,doy:r.doy||p.doy,tk:r.tk||p.tk,addr:r.addr||p.addr,city:r.city||p.city}));}else{alert("Δεν βρέθηκε");}}} style={{padding:"6px 12px",borderRadius:6,border:"none",background:"#FFC107",color:"#333",cursor:"pointer",fontWeight:700,fontSize:"0.78rem"}}>🔍 ΑΦΜ</button>
+</div>
+</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
-<FL l="Επώνυμο" req><input value={form.ln} onChange={e=>s("ln",e.target.value)} style={iS}/></FL>
-<FL l="Όνομα" req><input value={form.fn} onChange={e=>s("fn",e.target.value)} style={iS}/></FL>
-<FL l="ΑΦΜ" req><input value={form.afm} onChange={e=>s("afm",e.target.value.replace(/\D/g,"").slice(0,9))} maxLength={9} style={iS}/></FL>
-<FL l="Κινητό"><input value={form.mob} onChange={e=>s("mob",e.target.value.replace(/\D/g,"").slice(0,10))} style={iS}/></FL>
-<FL l="Email"><input value={form.em} onChange={e=>s("em",e.target.value)} style={iS}/></FL>
-<FL l="Διεύθυνση"><input value={form.addr} onChange={e=>s("addr",e.target.value)} style={iS}/></FL>
-<FL l="Πόλη"><input value={form.city} onChange={e=>s("city",e.target.value)} style={iS}/></FL>
-<FL l="ΤΚ"><input value={form.tk} onChange={e=>s("tk",e.target.value.replace(/\D/g,"").slice(0,5))} style={iS}/></FL>
+{[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["afm","ΑΦΜ",1],["adt","ΑΔΤ",1],["mob","Κινητό",1],["ph","Τηλέφωνο"],["em","Email",0],["doy","ΔΟΥ"],["addr","Διεύθυνση",1],["city","Πόλη",1],["tk","ΤΚ",1]].map(([f,l,r])=>
+<FL key={f} l={l} req={!!r}><input value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
 </div></div>
 
 {/* Energy Lines */}
@@ -1691,6 +1692,32 @@ return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 {/* ═══ ENERGY BILL ANALYZER ═══ */}
 <EnergyAnalyzer/>
 
+{/* ═══ ΡΑΑΕΥ ENERGY COMPARISON ═══ */}
+<EnergyCompare/>
+
+</div>);
+}
+
+// ═══ ENERGY COMPARE (ΡΑΑΕΥ) ═══
+function EnergyCompare(){
+const[activeTab,setActiveTab]=useState(null);
+const tabs=[
+  {key:"elec_home",label:"⚡ Ρεύμα Οικιακό",url:"https://energycost.gr/%CF%85%CF%80%CE%BF%CE%BB%CE%BF%CE%B3%CE%B9%CF%83%CE%BC%CF%8C%CF%82-%CF%84%CE%B9%CE%BC%CE%AE%CF%82-%CE%B2%CE%AC%CF%83%CE%B5%CE%B9-%CE%BA%CE%B1%CF%84%CE%B1%CE%BD%CE%AC%CE%BB%CF%89%CF%83%CE%B7%CF%82-2/",color:"#FF6F00"},
+  {key:"elec_biz",label:"⚡ Ρεύμα Επαγγελματικό",url:"https://energycost.gr/%CE%BA%CE%B1%CF%84%CE%B1%CF%87%CF%89%CF%81%CE%B7%CE%BC%CE%AD%CE%BD%CE%B1-%CF%84%CE%B9%CE%BC%CE%BF%CE%BB%CF%8C%CE%B3%CE%B9%CE%B1-%CF%80%CF%81%CE%BF%CE%BC%CE%AE%CE%B8%CE%B5%CE%B9%CE%B1%CF%82-%CE%B7-2/",color:"#E65100"},
+  {key:"gas_home",label:"🔥 Αέριο Οικιακό",url:"https://energycost.gr/%CE%BA%CE%B1%CF%84%CE%B1%CF%87%CF%89%CF%81%CE%B7%CE%BC%CE%AD%CE%BD%CE%B1-%CF%84%CE%B9%CE%BC%CE%BF%CE%BB%CF%8C%CE%B3%CE%B9%CE%B1-%CF%80%CF%81%CE%BF%CE%BC%CE%AE%CE%B8%CE%B5%CE%B9%CE%B1%CF%82_gas/",color:"#0277BD"},
+  {key:"gas_biz",label:"🔥 Αέριο Επαγγελματικό",url:"https://energycost.gr/%CE%BA%CE%B1%CF%84%CE%B1%CF%87%CF%89%CF%81%CE%B7%CE%BC%CE%AD%CE%BD%CE%B1-%CF%84%CE%B9%CE%BC%CE%BF%CE%BB%CF%8C%CE%B3%CE%B9%CE%B1-%CF%80%CF%81%CE%BF%CE%BC%CE%AE%CE%B8%CE%B5%CE%B9%CE%B1%CF%82-%CE%B5_gas/",color:"#1565C0"},
+];
+return(
+<div style={{background:"white",borderRadius:12,padding:20,marginTop:16,boxShadow:"0 2px 8px rgba(0,0,0,0.08)",border:"1px solid #E0E0E0"}}>
+<h2 style={{fontFamily:"'Outfit'",fontSize:"1.1rem",fontWeight:700,marginBottom:4}}>📊 Σύγκριση Τιμολογίων ΡΑΑΕΥ</h2>
+<p style={{fontSize:"0.8rem",color:"#666",marginBottom:14}}>Επίσημο εργαλείο σύγκρισης τιμών ενέργειας — ενημερώνεται μηνιαία</p>
+<div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+{tabs.map(t=><button key={t.key} onClick={()=>setActiveTab(activeTab===t.key?null:t.key)} style={{padding:"8px 16px",borderRadius:8,border:activeTab===t.key?`2px solid ${t.color}`:"2px solid #E0E0E0",background:activeTab===t.key?t.color+"15":"white",color:activeTab===t.key?t.color:"#666",cursor:"pointer",fontWeight:activeTab===t.key?700:500,fontSize:"0.82rem"}}>{t.label}</button>)}
+</div>
+{activeTab&&(()=>{const t=tabs.find(x=>x.key===activeTab);return t?<div style={{borderRadius:10,overflow:"hidden",border:"1px solid #E0E0E0"}}>
+<iframe src={t.url} style={{width:"100%",height:700,border:"none"}} title={t.label} sandbox="allow-scripts allow-same-origin allow-forms allow-popups"/>
+</div>:null;})()}
+{!activeTab&&<div style={{textAlign:"center",padding:20,color:"#999",fontSize:"0.82rem"}}>Επιλέξτε κατηγορία για σύγκριση τιμολογίων</div>}
 </div>);
 }
 
