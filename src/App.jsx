@@ -498,7 +498,7 @@ return(
 {/* PROVIDERS + ENERGY in header */}
 <div style={{display:"flex",justifyContent:"center",gap:6,padding:"6px 20px",background:"rgba(0,0,0,0.15)",flexWrap:"wrap"}}>
 {(cu.accessGroup==="all"||cu.accessGroup==="telecom"||cu.role==="admin"||cu.role==="director")&&Object.entries(PROVIDERS).map(([k,p])=><button key={k} onClick={()=>{setProv(k);setSF("all");setVM("list");setTab("dash");}} style={{padding:"4px 12px",borderRadius:6,border:"none",background:prov===k&&tab!=="energy_tab"?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:prov===k&&tab!=="energy_tab"?1:0.7,display:"flex",alignItems:"center",gap:4}}>{p.logo?<img src={p.logo} alt={p.name} style={{height:20,objectFit:"contain"}}/>:<span>{p.icon}</span>} <span>{p.name}</span></button>)}
-{(cu.accessGroup==="all"||cu.accessGroup==="energy"||cu.role==="admin"||cu.role==="director")&&<button onClick={()=>{setTab("energy_tab");}} style={{padding:"4px 14px",borderRadius:6,border:"none",background:tab==="energy_tab"?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:tab==="energy_tab"?1:0.7,display:"flex",alignItems:"center",gap:4}}><span>⚡</span> <span>Ρεύμα</span></button>}
+{(cu.accessGroup==="all"||cu.accessGroup==="energy"||cu.role==="admin"||cu.role==="director")&&<button onClick={()=>{setTab("e_dash");}} style={{padding:"4px 14px",borderRadius:6,border:"none",background:tab.startsWith("e_")?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:tab.startsWith("e_")?1:0.7,display:"flex",alignItems:"center",gap:4}}><span>⚡</span> <span>Ρεύμα</span></button>}
 </div>
 </div>
 
@@ -534,25 +534,37 @@ return(
 </div>
 :<div onClick={()=>setSbOpen(true)} style={{padding:"8px 0",textAlign:"center",cursor:"pointer",color:"rgba(255,255,255,0.4)",fontSize:"1rem"}}>🔍</div>}
 
-{/* Access groups: telecom = Vodafone/Cosmote/Nova/DEI Fiber, energy = Ρεύμα */}
+{/* ═══ SIDEBAR with Telecom + Energy sections ═══ */}
 {(()=>{
-const grp=cu?.accessGroup||"all"; // all, telecom, energy
+const grp=cu?.accessGroup||"all";
 const hasTelecom=grp==="all"||grp==="telecom"||cu?.role==="admin"||cu?.role==="director";
 const hasEnergy=grp==="all"||grp==="energy"||cu?.role==="admin"||cu?.role==="director";
-return[[hasTelecom?"dash":null,"📊","Αιτήσεις",hasTelecom],
-[hasTelecom?"search":null,"🔍","Αναζήτηση",hasTelecom],
-["tix","🎫","Αιτήματα",tixEnabled||cu?.role==="admin"],
-[hasTelecom?"offers":null,"🏷️","Προσφορές",hasTelecom],
-["tools","🛠️","Εργαλεία",true],
-["reports","📈","Reports",P.reports],
-["users","👥","Χρήστες",P.users],
-["admin","👑","Admin",P.adminPanel]
-].filter(x=>x[3]&&x[0]).map(([k,ic,l])=>
-<div key={k} onClick={()=>{setTab(k);setVM("list");setSelTix(null);}} style={{padding:sbOpen?"10px 18px":"10px 0",cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:tab===k?"rgba(255,255,255,0.1)":"transparent",borderLeft:tab===k?`3px solid ${pr.color}`:"3px solid transparent",color:tab===k?"white":"rgba(255,255,255,0.55)",transition:"all 0.2s"}}>
+const sItem=(k,ic,l)=>(
+<div key={k} onClick={()=>{setTab(k);setVM("list");setSelTix(null);}} style={{padding:sbOpen?"8px 18px":"8px 0",cursor:"pointer",display:"flex",alignItems:"center",gap:10,background:tab===k?"rgba(255,255,255,0.1)":"transparent",borderLeft:tab===k?`3px solid ${k.startsWith("e_")?"#FF6F00":pr.color}`:"3px solid transparent",color:tab===k?"white":"rgba(255,255,255,0.55)",transition:"all 0.2s"}}>
 <span style={{fontSize:"1rem",minWidth:20,textAlign:"center"}}>{ic}</span>
 {sbOpen&&<span style={{fontFamily:"'Outfit'",fontWeight:tab===k?700:500,fontSize:"0.82rem",whiteSpace:"nowrap"}}>{l}</span>}
-</div>);})()}
-</div></div>
+</div>);
+const sHead=(label)=>sbOpen?<div style={{padding:"10px 18px 4px",fontSize:"0.62rem",fontWeight:700,color:"rgba(255,255,255,0.35)",textTransform:"uppercase",letterSpacing:1}}>{label}</div>:null;
+return(<>
+{hasTelecom&&<>{sHead("TELECOM")}
+{sItem("dash","📊","Αιτήσεις")}
+{sItem("search","🔍","Αναζήτηση")}
+{sItem("offers","🏷️","Προσφορές")}
+</>}
+{hasEnergy&&<>{sHead("ΡΕΥΜΑ")}
+{sItem("e_dash","⚡","Αιτήσεις")}
+{sItem("e_search","🔍","Αναζήτηση")}
+{sItem("e_reports","📈","Reports")}
+{sItem("e_offers","🏷️","Προσφορές")}
+</>}
+{sHead("ΚΟΙΝΑ")}
+{(tixEnabled||cu?.role==="admin")&&sItem("tix","🎫","Αιτήματα")}
+{sItem("tools_pdf","📄","Εργαλεία PDF")}
+{hasEnergy&&sItem("tools_energy","⚡","Εργαλεία Ρεύμα")}
+{P.reports&&hasTelecom&&sItem("reports","📈","Reports Telecom")}
+{P.users&&sItem("users","👥","Χρήστες")}
+{P.adminPanel&&sItem("admin","👑","Admin")}
+</>);})()}
 
 {/* MAIN CONTENT */}
 <div style={{flex:1,padding:20,maxWidth:1200,margin:"0 auto",overflow:"auto"}}>
@@ -734,8 +746,9 @@ res.map(r=><tr key={r.id} style={{cursor:"pointer"}} onClick={()=>{setSel(r);set
 
 {/* ═══ REPORTS ═══ */}
 {tab==="offers"&&<OffersPanel offers={offers} setOffers={setOffers} cu={cu} pr={pr}/>}
-{tab==="energy_tab"&&<EnergyPanel cu={cu} reqs={reqs} setReqs={setReqs} users={users} afmDb={afmDb} P={P}/>}
-{tab==="tools"&&<ToolsPanel/>}
+{(tab==="e_dash"||tab==="e_search"||tab==="e_reports"||tab==="e_offers")&&<EnergyPanel cu={cu} reqs={reqs} setReqs={setReqs} users={users} afmDb={afmDb} P={P} initTab={tab.replace("e_","")}/>}
+{tab==="tools_pdf"&&<ToolsPDFPanel/>}
+{tab==="tools_energy"&&<ToolsEnergyPanel/>}
 {tab==="reports"&&P.reports&&<ReportsPanel reqs={reqs} users={users} pr={pr} prov={prov} PROVIDERS={PROVIDERS} ST={ST} expReport={expReport} expXLSX={expXLSX}/>}
 
 {/* SYSTEM */}
@@ -1414,9 +1427,32 @@ setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Απ
 
 </div>);}
 
+// ═══ ENERGY SEARCH ═══
+function EnergySearch({energyReqs,iS}){
+const[sq,setSQ]=useState("");
+const res=sq.trim()?energyReqs.filter(r=>[r.id,r.ln,r.fn,r.afm,r.mob,r.agentName].some(v=>(v||"").toLowerCase().includes(sq.toLowerCase()))):[];
+return(<div>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🔍 Αναζήτηση Ρεύματος</h1>
+<div style={{display:"flex",gap:6,marginBottom:14}}><input value={sq} onChange={e=>setSQ(e.target.value)} placeholder="ID, Επώνυμο, ΑΦΜ, Κινητό, Agent..." style={{...iS,flex:1}}/></div>
+{sq.trim()&&<div style={{fontSize:"0.78rem",marginBottom:8,color:"#666"}}>Βρέθηκαν {res.length} αποτελέσματα</div>}
+{res.length>0&&<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.76rem",background:"white",borderRadius:8,overflow:"hidden"}}>
+<thead><tr style={{background:"#FF6F00",color:"white"}}>{["ID","Πελάτης","ΑΦΜ","Πάροχος","Κατάσταση","Agent","Ημ/νία"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left"}}>{h}</th>)}</tr></thead>
+<tbody>{res.map(r=>{const st=ST[r.status]||{};const el=(r.lines||[])[0]||{};return(
+<tr key={r.id} style={{borderBottom:"1px solid #F0F0F0"}}>
+<td style={{padding:"6px 8px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
+<td style={{padding:"6px 8px"}}>{r.ln} {r.fn}</td>
+<td style={{padding:"6px 8px"}}>{r.afm}</td>
+<td style={{padding:"6px 8px"}}>{ENERGY_PROVIDERS[el.eProv]?.name||"—"}</td>
+<td style={{padding:"6px 8px"}}><span style={{padding:"2px 6px",borderRadius:4,fontSize:"0.66rem",fontWeight:700,background:st.bg,color:st.c}}>{st.i} {st.l}</span></td>
+<td style={{padding:"6px 8px"}}>{r.agentName}</td>
+<td style={{padding:"6px 8px"}}>{fmtDate(r.created)}</td></tr>);})}</tbody></table>}
+</div>);
+}
+
 // ═══ ENERGY PANEL (Full CRM) ═══
-function EnergyPanel({cu,reqs,setReqs,users,afmDb,P}){
-const[eTab,setETab]=useState("dash"); // dash, form, detail, search, reports
+function EnergyPanel({cu,reqs,setReqs,users,afmDb,P,initTab}){
+const[eTab,setETab]=useState(initTab||"dash");
+useEffect(()=>{if(initTab)setETab(initTab);},[initTab]); // dash, form, detail, search, reports
 const[eVM,setEVM]=useState("list");
 const[eSel,setESel]=useState(null);
 const[eSF,setESF]=useState("all");
@@ -1555,21 +1591,70 @@ const EnergyForm=({ed,onCancel})=>{
 };
 
 // ═══ MAIN RENDER ═══
-const eTabItems=[["dash","📊","Αιτήσεις"],["search","🔍","Αναζήτηση"],["reports","📈","Reports"]];
 
-return(<div style={{display:"flex",height:"calc(100vh - 140px)"}}>
-{/* Energy Sidebar */}
-<div style={{width:180,minWidth:180,background:"#1A1A2E",padding:"10px 0"}}>
-{eTabItems.map(([k,ic,l])=>
-<div key={k} onClick={()=>{setETab(k);setEVM("list");}} style={{padding:"10px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:8,background:eTab===k?"rgba(255,255,255,0.1)":"transparent",borderLeft:eTab===k?"3px solid #FF6F00":"3px solid transparent",color:eTab===k?"white":"rgba(255,255,255,0.55)"}}>
-<span>{ic}</span><span style={{fontFamily:"'Outfit'",fontWeight:eTab===k?700:500,fontSize:"0.82rem"}}>{l}</span></div>)}
+return(<div>
+
+{/* FORM (new) */}
+{eVM==="form"&&<EnergyForm ed={null} onCancel={()=>{setEVM("list");setESel(null);}}/>}
+
+{/* EDIT */}
+{eVM==="edit"&&eSel&&<EnergyForm ed={eSel} onCancel={()=>{setEVM("list");setESel(null);}}/>}
+
+{/* DETAIL VIEW */}
+{eVM==="detail"&&eSel&&(()=>{const r=eSel;const st=ST[r.status]||{};const lines=r.lines||r.energyLines||[];const docs=r.documents?typeof r.documents==="string"?JSON.parse(r.documents):r.documents:[];
+return(<div style={{maxWidth:900,margin:"0 auto"}}>
+<div style={{background:"linear-gradient(135deg,#FF6F00,#F4511E)",borderRadius:12,padding:16,color:"white",marginBottom:14}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+<div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.2rem"}}>⚡ {r.id}</h2><div style={{fontSize:"0.82rem",opacity:0.9}}>{r.ln} {r.fn} — {r.afm}</div></div>
+<div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+<span style={{padding:"3px 10px",borderRadius:6,background:st.bg,color:st.c,fontWeight:700,fontSize:"0.76rem"}}>{st.i} {st.l}</span>
+{P.edit&&<button onClick={()=>setEVM("edit")} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>✏️ Επεξεργασία</button>}
+{r.status==="draft"&&r.agentId===cu.id&&<button onClick={()=>{setReqs(p=>p.map(x=>x.id===r.id?{...x,status:"sent"}:x));setESel(p=>({...p,status:"sent"}));}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#1565C0",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📤 Αποστολή</button>}
+<button onClick={()=>{setEVM("list");setESel(null);}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>← Πίσω</button>
+</div></div></div>
+
+{/* Customer Info */}
+<div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>👤 Πελάτης</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:6}}>
+{[["Επώνυμο",r.ln],["Όνομα",r.fn],["ΑΦΜ",r.afm],["Κινητό",r.mob],["Email",r.em],["Διεύθυνση",r.addr],["Πόλη",r.city],["ΤΚ",r.tk],["Agent",r.agentName],["Partner",r.partner]].filter(([,v])=>v).map(([l,v])=>
+<div key={l}><div style={{fontSize:"0.65rem",color:"#888",fontWeight:600,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"0.82rem",fontWeight:500}}>{v}</div></div>)}
+</div></div>
+
+{/* Energy Lines */}
+{lines.length>0&&<div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>⚡ Παροχές ({lines.length})</div>
+{lines.map((el,i)=>(
+<div key={i} style={{background:"#FFFBF0",borderRadius:8,padding:10,marginBottom:6,borderLeft:"4px solid #FF6F00"}}>
+<div style={{fontWeight:700,fontSize:"0.8rem",color:"#E65100",marginBottom:4}}>⚡ Παροχή {i+1} — {ENERGY_PROVIDERS[el.eProv]?.name||""}</div>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:4}}>
+{[["Πρόγραμμα",el.progCustom||el.prog],["Τιμή",el.price?"€"+el.price:null],["Τιμολόγιο",el.eInvoiceColor],["Τύπος",el.eType],["Τιμολόγηση",el.eBilling],["Πληρωμή",el.ePayment],["Ενέργεια",el.eAction],["Κατάσταση",el.eConnStatus],["Αρ.Παροχής",el.eParochi],["ΗΚΑΣΠ",el.eHkasp],["Από Πάροχο",el.fromProv],["Εγκατάσταση",el.instAddr?`${el.instAddr}, ${el.instCity||""} ${el.instTk||""}`:""]].filter(([,v])=>v).map(([l,v])=>
+<div key={l}><div style={{fontSize:"0.62rem",color:"#888",fontWeight:600,textTransform:"uppercase"}}>{l}</div><div style={{fontSize:"0.78rem",fontWeight:500}}>{v}</div></div>)}
+</div></div>))}
+</div>}
+
+{/* Documents */}
+{docs.length>0&&<div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem"}}>📎 Δικαιολογητικά ({docs.length})</div>
+{docs.length>1&&<button onClick={()=>downloadAll(docs)} style={{padding:"3px 10px",borderRadius:6,border:"1px solid #2E7D32",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.7rem",fontWeight:700}}>📥 Λήψη Όλων</button>}
 </div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{docs.map((d,j)=><button key={j} onClick={()=>downloadDoc(d.path,d.name)} style={{padding:"5px 10px",borderRadius:6,background:"white",border:"1px solid #E0E0E0",fontSize:"0.74rem",fontWeight:600,color:"#1565C0",cursor:"pointer"}}>{d.type==="id"?"🪪":"📄"} {d.name}</button>)}</div>
+</div>}
 
-{/* Energy Content */}
-<div style={{flex:1,overflow:"auto",padding:16}}>
+{/* Signature */}
+{r.sig&&<div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0",textAlign:"center"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>✍️ Υπογραφή</div>
+<img src={r.sig} alt="sig" style={{maxWidth:280,border:"1px solid #E0E0E0",borderRadius:6}}/>
+</div>}
 
-{/* FORM */}
-{eVM==="form"&&<EnergyForm ed={eVM==="edit"?eSel:null} onCancel={()=>{setEVM("list");setESel(null);}}/>}
+{/* Status change for BackOffice */}
+{P.status&&<div style={{background:"white",borderRadius:10,padding:14,border:"1px solid #E0E0E0"}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📋 Αλλαγή Κατάστασης</div>
+<select value={r.status} onChange={async e=>{const ns=e.target.value;setReqs(p=>p.map(x=>x.id===r.id?{...x,status:ns}:x));setESel(p=>({...p,status:ns}));if(USE_SUPA){try{await supa.from("requests").update({status:ns}).eq("id",r.id);}catch(e2){console.error(e2);}}}} style={{padding:"8px 14px",borderRadius:6,border:"1px solid #DDD",fontSize:"0.82rem",fontWeight:700,background:st.bg,color:st.c}}>
+{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select>
+</div>}
+</div>);})()}
 
 {/* DASHBOARD */}
 {eTab==="dash"&&eVM==="list"&&<>
@@ -1592,7 +1677,7 @@ return(<div style={{display:"flex",height:"calc(100vh - 140px)"}}>
 <thead><tr style={{background:"linear-gradient(135deg,#FF6F00,#F4511E)",color:"white"}}>
 {["ID","Πελάτης","ΑΦΜ","Πάροχος","Κατάσταση","Agent","Ημ/νία"].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left"}}>{h}</th>)}</tr></thead>
 <tbody>{eFR.map(r=>{const st=ST[r.status]||{};const el=(r.lines||r.energyLines||[])[0]||{};return(
-<tr key={r.id} onClick={()=>{setESel(r);setEVM("edit");}} style={{borderBottom:"1px solid #F0F0F0",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#FFF8E1"} onMouseOut={e=>e.currentTarget.style.background=""}>
+<tr key={r.id} onClick={()=>{setESel(r);setEVM("detail");}} style={{borderBottom:"1px solid #F0F0F0",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#FFF8E1"} onMouseOut={e=>e.currentTarget.style.background=""}>
 <td style={{padding:"7px 8px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
 <td style={{padding:"7px 8px"}}>{r.ln} {r.fn}</td>
 <td style={{padding:"7px 8px"}}>{r.afm}</td>
@@ -1604,22 +1689,7 @@ return(<div style={{display:"flex",height:"calc(100vh - 140px)"}}>
 </>}
 
 {/* SEARCH */}
-{eTab==="search"&&<div>
-<h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🔍 Αναζήτηση Ρεύματος</h1>
-{(()=>{const[sq,setSQ]=useState("");const res=sq.trim()?energyReqs.filter(r=>[r.id,r.ln,r.fn,r.afm,r.mob].some(v=>(v||"").toLowerCase().includes(sq.toLowerCase()))):[];
-return(<><div style={{display:"flex",gap:6,marginBottom:14}}><input value={sq} onChange={e=>setSQ(e.target.value)} placeholder="ID, Επώνυμο, ΑΦΜ, Κινητό..." style={{...iS,flex:1}}/></div>
-{sq.trim()&&<div style={{fontSize:"0.78rem",marginBottom:8,color:"#666"}}>Βρέθηκαν {res.length} αποτελέσματα</div>}
-{res.length>0&&<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.76rem",background:"white",borderRadius:8,overflow:"hidden"}}>
-<thead><tr style={{background:"#FF6F00",color:"white"}}>{["ID","Πελάτης","ΑΦΜ","Πάροχος","Κατάσταση","Ημ/νία"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left"}}>{h}</th>)}</tr></thead>
-<tbody>{res.map(r=>{const st=ST[r.status]||{};const el=(r.lines||[])[0]||{};return(
-<tr key={r.id} style={{borderBottom:"1px solid #F0F0F0"}}>
-<td style={{padding:"6px 8px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
-<td style={{padding:"6px 8px"}}>{r.ln} {r.fn}</td>
-<td style={{padding:"6px 8px"}}>{r.afm}</td>
-<td style={{padding:"6px 8px"}}>{ENERGY_PROVIDERS[el.eProv]?.name||"—"}</td>
-<td style={{padding:"6px 8px"}}><span style={{padding:"2px 6px",borderRadius:4,fontSize:"0.66rem",fontWeight:700,background:st.bg,color:st.c}}>{st.i} {st.l}</span></td>
-<td style={{padding:"6px 8px"}}>{fmtDate(r.created)}</td></tr>);})}</tbody></table>}</>);})()}
-</div>}
+{eTab==="search"&&<EnergySearch energyReqs={energyReqs} iS={iS}/>}
 
 {/* REPORTS */}
 {eTab==="reports"&&<div>
@@ -1657,7 +1727,18 @@ return(<><div style={{display:"flex",gap:6,marginBottom:14}}><input value={sq} o
 <td style={{padding:"6px 8px",color:"#2E7D32",fontWeight:600}}>{aReqs.filter(r=>r.status==="active").length}</td></tr>);})}</tbody></table></div>
 </div>}
 
-</div></div>);
+{/* OFFERS */}
+{eTab==="offers"&&<div>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🏷️ Προσφορές Ρεύματος</h1>
+<p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Προσφορές παρόχων ρεύματος — σύντομα θα μπορείτε να ανεβάζετε PDF προσφορών ανά πάροχο</p>
+{Object.entries(ENERGY_PROVIDERS).slice(0,8).map(([k,ep])=>(
+<div key={k} style={{background:"white",borderRadius:10,padding:14,marginBottom:8,border:"1px solid #E0E0E0",borderLeft:`4px solid ${ep.color}`}}>
+<div style={{fontWeight:700,fontSize:"0.88rem",color:ep.color}}>{ep.name}</div>
+<div style={{fontSize:"0.76rem",color:"#888",marginTop:4}}>Προγράμματα: {ep.programs.slice(0,4).join(", ")}{ep.programs.length>4?"...":""}</div>
+</div>))}
+</div>}
+
+</div>);
 }
 
 // ═══ TOOLS PANEL ═══
@@ -1790,12 +1871,18 @@ return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 {mergeStatus&&<div style={{marginTop:8,fontSize:"0.78rem",fontWeight:600,color:mergeStatus.includes("✅")?"#2E7D32":mergeStatus.includes("❌")?"#C62828":"#1565C0"}}>{mergeStatus}</div>}
 </div>
 
-{/* ═══ ENERGY BILL ANALYZER ═══ */}
+</div>);
+}
+
+// ═══ TOOLS PDF PANEL (wrapper) ═══
+function ToolsPDFPanel(){return <ToolsPanel/>;}
+
+// ═══ TOOLS ENERGY PANEL ═══
+function ToolsEnergyPanel(){
+return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:20}}>⚡ Εργαλεία Ρεύματος</h1>
 <EnergyAnalyzer/>
-
-{/* ═══ ΡΑΑΕΥ ENERGY COMPARISON ═══ */}
 <EnergyCompare/>
-
 </div>);
 }
 
@@ -2405,7 +2492,8 @@ if(sec==="ov")return(<div>
 <AdmCd ic="📋" ti="Πεδία Φόρμας" ds="Προσθήκη, αφαίρεση, validation" ct={flds.length} cl="#2196F3" onClick={()=>setSec("fl")}/>
 <AdmCd ic="📝" ti="Dropdown Lists" ds="Προγράμματα, couriers, υπηρεσίες" ct={dds.length} cl="#FF9800" onClick={()=>setSec("dd")}/>
 <AdmCd ic="👤" ti="Πελάτες ΑΦΜ" ds="Βάση δεδομένων, προσθήκη/διαγραφή" ct={afmDb.length} cl="#9C27B0" onClick={()=>setSec("cu")}/>
-<AdmCd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, διαγραφή, status" ct={reqs.length} cl="#FF5722" onClick={()=>setSec("rq")}/>
+<AdmCd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, διαγραφή, status" ct={reqs.filter(r=>r.prov!=="energy").length} cl="#FF5722" onClick={()=>setSec("rq")}/>
+<AdmCd ic="⚡" ti="Αιτήσεις Ρεύματος" ds="Διαχείριση αιτήσεων ρεύματος" ct={reqs.filter(r=>r.prov==="energy").length} cl="#FF6F00" onClick={()=>setSec("erq")}/>
 <AdmCd ic="🎫" ti="Αιτήματα" ds="Διαχείριση tickets" ct={tix?.length||0} cl="#9C27B0" onClick={()=>setSec("tk")}/>
 <AdmCd ic="🔧" ti="Σύστημα" ds="Παύση συστήματος" cl="#607D8B" onClick={()=>setSec("sy")}/>
 <AdmCd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
@@ -2424,13 +2512,15 @@ if(sec==="us")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <div><label style={{fontSize:"0.72rem",fontWeight:600}}>Ρόλος</label><select value={nu.role} onChange={e=>setNu(p=>({...p,role:e.target.value}))} style={iS}>{Object.entries(ROLES).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
 <div><label style={{fontSize:"0.72rem",fontWeight:600}}>Partner</label><select value={nu.partner} onChange={e=>setNu(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>
 <div style={{display:"flex",alignItems:"center",gap:4,paddingTop:14}}><input type="checkbox" checked={!!nu.cc} onChange={e=>setNu(p=>({...p,cc:e.target.checked?1:0}))}/><span style={{fontSize:"0.76rem",fontWeight:600}}>Καταχώρηση</span></div>
-</div><button onClick={()=>{if(nu.un&&nu.pw&&nu.name){setUsers(p=>[...p,{...nu,id:"U"+String(p.length+10).padStart(3,"0"),active:1,paused:0}]);setNu({un:"",pw:"",name:"",email:"",role:"agent",partner:"",cc:1});setShowU(false);}}} style={B("#4CAF50","white",{})}>✅</button></div>}
-<div style={{background:"white",borderRadius:10,overflow:"hidden"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["","Χρήστης","Ρόλος","Partner","Καταχ.","Status",""].map(h=><th key={h} style={{padding:"7px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.68rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
+<div><label style={{fontSize:"0.72rem",fontWeight:600}}>Πρόσβαση</label><select value={nu.accessGroup||"all"} onChange={e=>setNu(p=>({...p,accessGroup:e.target.value}))} style={iS}><option value="all">📊 Όλα</option><option value="telecom">📡 Telecom μόνο</option><option value="energy">⚡ Ρεύμα μόνο</option></select></div>
+</div><button onClick={()=>{if(nu.un&&nu.pw&&nu.name){const newU={...nu,id:"U"+String(users.length+10).padStart(3,"0"),active:1,paused:0,accessGroup:nu.accessGroup||"all"};setUsers(p=>[...p,newU]);if(USE_SUPA){fetch(`${SUPA_URL}/rest/v1/users`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({id:newU.id,username:nu.un,password:nu.pw,name:nu.name,email:nu.email,role:nu.role,partner:nu.partner,can_create:nu.cc?true:false,access_group:nu.accessGroup||"all",active:true})}).catch(e=>console.error(e));}setNu({un:"",pw:"",name:"",email:"",role:"agent",partner:"",cc:1,accessGroup:"all"});setShowU(false);}}} style={B("#4CAF50","white",{})}>✅</button></div>}
+<div style={{background:"white",borderRadius:10,overflow:"hidden"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["","Χρήστης","Ρόλος","Partner","Πρόσβαση","Καταχ.","Status",""].map(h=><th key={h} style={{padding:"7px 10px",fontFamily:"'Outfit'",fontWeight:600,fontSize:"0.68rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
 {users.map(u=><tr key={u.id} style={{borderBottom:"1px solid #F5F5F5",background:u.paused?"#FFF5F5":"white"}}>
 <td style={{padding:"7px 10px",fontSize:"0.76rem",fontWeight:600}}>{u.id}</td>
 <td style={{padding:"7px 10px"}}><div style={{fontWeight:600,fontSize:"0.82rem"}}>{u.name}</div><div style={{fontSize:"0.7rem",color:"#888"}}>{u.un}</div></td>
 <td style={{padding:"7px 10px"}}><span style={bg(ROLES[u.role]?.c+"20",ROLES[u.role]?.c)}>{ROLES[u.role]?.i} {ROLES[u.role]?.l}</span></td>
 <td style={{padding:"7px 10px",fontSize:"0.78rem"}}>{u.partner||"—"}</td>
+<td style={{padding:"7px 10px"}}><select value={u.accessGroup||"all"} onChange={async e=>{const v=e.target.value;setUsers(p=>p.map(x=>x.id===u.id?{...x,accessGroup:v}:x));if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/users?id=eq.${u.id}`,{method:"PATCH",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({access_group:v})});}catch(e2){console.error(e2);}}}} style={{padding:"3px 6px",borderRadius:5,border:"1px solid #DDD",fontSize:"0.7rem",fontWeight:600,background:(u.accessGroup||"all")==="all"?"#E8F5E9":(u.accessGroup==="telecom"?"#E3F2FD":"#FFF3E0"),cursor:"pointer"}}><option value="all">📊 Όλα</option><option value="telecom">📡 Telecom</option><option value="energy">⚡ Ρεύμα</option></select></td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,cc:x.cc?0:1}:x))} style={{padding:"3px 10px",borderRadius:5,border:"none",background:u.cc?"#E8F5E9":"#FFE6E6",color:u.cc?"#2E7D32":"#E60000",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>{u.cc?"✅":"❌"}</button></td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} style={{padding:"3px 10px",borderRadius:5,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>{u.paused?"▶ Ενεργοποίηση":"⏸ Παύση"}</button></td>
 <td style={{padding:"7px 10px"}}>{u.role!=="admin"&&<button onClick={()=>{if(confirm("Διαγραφή "+u.name+"?"))setUsers(p=>p.filter(x=>x.id!==u.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button>}</td></tr>)}</tbody></table></div></div>);
@@ -2490,6 +2580,32 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px"}}><select value={r.status} onChange={async e=>{const ns=e.target.value;const updates={status:ns};if(ns==="active"&&!r.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(r.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.endDate=ed.toISOString().slice(0,10);}if(ns==="credited"&&!r.creditDate){updates.creditDate=new Date().toISOString().slice(0,10);}setReqs(p=>p.map(x=>x.id===r.id?{...x,...updates}:x));if(USE_SUPA){try{const dbUp={status:ns};if(updates.startDate){dbUp.start_date=updates.startDate;dbUp.end_date=updates.endDate;}if(updates.creditDate){dbUp.credit_date=updates.creditDate;}await supa.from("requests").update(dbUp).eq("id",r.id);}catch(e2){console.error("❌",e2);}}}} style={{...iS,width:155,padding:"3px 6px",fontSize:"0.72rem",background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c||"#333",fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.agentName}</td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
+
+// ─── ENERGY REQUESTS ───
+if(sec==="erq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>⚡ Αιτήσεις Ρεύματος (Admin)</h1>
+{(()=>{const eReqs=reqs.filter(r=>r.prov==="energy");
+return(<>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(120px,1fr))",gap:8,marginBottom:14}}>
+{[["Σύνολο",eReqs.length,"#FF6F00"],["Ενεργές",eReqs.filter(r=>r.status==="active").length,"#2E7D32"],["Εκκρεμείς",eReqs.filter(r=>r.status==="pending").length,"#FF9800"],["Απεσταλμένες",eReqs.filter(r=>r.status==="sent").length,"#1565C0"]].map(([l,v,c])=>
+<div key={l} style={{background:"white",borderRadius:8,padding:10,borderLeft:`3px solid ${c}`}}><div style={{fontSize:"0.7rem",color:"#888"}}>{l}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.2rem",color:c}}>{v}</div></div>)}
+</div>
+<div style={{background:"white",borderRadius:10,overflow:"hidden"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.76rem"}}>
+<thead><tr style={{background:"#FF6F00",color:"white"}}>{["ID","Πελάτης","ΑΦΜ","Πάροχος","Κατάσταση","Agent","Ημ/νία",""].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left"}}>{h}</th>)}</tr></thead>
+<tbody>{eReqs.map(r=>{const st=ST[r.status]||{};const el=(r.lines||[])[0]||{};return(
+<tr key={r.id} style={{borderBottom:"1px solid #F0F0F0"}}>
+<td style={{padding:"7px 8px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
+<td style={{padding:"7px 8px"}}>{r.ln} {r.fn}</td>
+<td style={{padding:"7px 8px"}}>{r.afm}</td>
+<td style={{padding:"7px 8px"}}>{ENERGY_PROVIDERS[el.eProv]?.name||"—"}</td>
+<td style={{padding:"7px 8px"}}><select value={r.status} onChange={e=>setReqs(p=>p.map(x=>x.id===r.id?{...x,status:e.target.value}:x))} style={{padding:"2px 4px",borderRadius:4,fontSize:"0.7rem",fontWeight:600,background:st.bg,color:st.c,border:"1px solid "+st.c}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
+<td style={{padding:"7px 8px"}}>{r.agentName}</td>
+<td style={{padding:"7px 8px"}}>{fmtDate(r.created)}</td>
+<td style={{padding:"7px 8px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"2px 6px",cursor:"pointer",fontSize:"0.68rem"}}>🗑</button></td>
+</tr>);})}</tbody></table></div>
+</>);})()}
+</div>);
 
 // ─── SYSTEM ───
 if(sec==="tk")return(<div><AdmBk onClick={()=>setSec("ov")}/>
