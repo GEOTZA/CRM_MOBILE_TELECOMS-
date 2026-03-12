@@ -100,7 +100,7 @@ CREATE TABLE requests (id TEXT PRIMARY KEY, provider TEXT, ln TEXT, fn TEXT, fat
 CREATE TABLE comments (id TEXT PRIMARY KEY, request_id TEXT, user_id TEXT, user_name TEXT, user_role TEXT, text TEXT, ts TEXT);
 CREATE TABLE tickets (id TEXT PRIMARY KEY, afm TEXT, cname TEXT, reason TEXT, req_id TEXT, created_by TEXT, by_name TEXT, by_role TEXT, status TEXT DEFAULT 'open', created_at TEXT);
 CREATE TABLE ticket_msgs (id SERIAL PRIMARY KEY, ticket_id TEXT, user_id TEXT, user_name TEXT, user_role TEXT, text TEXT, ts TEXT);
-CREATE TABLE afm_db (afm TEXT PRIMARY KEY, ln TEXT, fn TEXT, fat TEXT, bd TEXT, adt TEXT, ph TEXT, mob TEXT, em TEXT, doy TEXT, tk TEXT, addr TEXT, city TEXT);
+CREATE TABLE afm_database (afm TEXT PRIMARY KEY, ln TEXT, fn TEXT, fat TEXT, bd TEXT, adt TEXT, ph TEXT, mob TEXT, em TEXT, doy TEXT, tk TEXT, addr TEXT, city TEXT);
 CREATE TABLE custom_fields (id SERIAL PRIMARY KEY, label TEXT, type TEXT DEFAULT 'text', max_chars INT DEFAULT 50, required BOOL DEFAULT false, active BOOL DEFAULT true);
 CREATE TABLE dropdown_lists (id SERIAL PRIMARY KEY, name TEXT, items JSONB DEFAULT '[]');
 */
@@ -565,6 +565,7 @@ return(<>
 {P.users&&sItem("users","👥","Χρήστες")}
 {P.adminPanel&&sItem("admin","👑","Admin")}
 </>);})()}
+</div></div>
 
 {/* MAIN CONTENT */}
 <div style={{flex:1,padding:20,maxWidth:1200,margin:"0 auto",overflow:"auto"}}>
@@ -2661,7 +2662,7 @@ if(sec==="db")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 </div></div>
 <div style={{background:"#1A1A2E",borderRadius:12,padding:18,color:"#E0E0E0"}}>
 <h3 style={{color:"#3ECF8E",marginBottom:8,fontFamily:"'Outfit'"}}>SQL</h3>
-<pre style={{fontSize:"0.68rem",lineHeight:1.4,overflowX:"auto",whiteSpace:"pre-wrap",color:"#CCC"}}>{"CREATE TABLE users (id TEXT PK, username TEXT, password TEXT, name TEXT, email TEXT, role TEXT, partner TEXT, active BOOL, paused BOOL, can_create BOOL);\n\nCREATE TABLE requests (id TEXT PK, provider TEXT, ln TEXT, fn TEXT, afm TEXT, mob TEXT, program TEXT, service TEXT, status TEXT, partner TEXT, agent_id TEXT, price TEXT, created TEXT);\n\nCREATE TABLE comments (id TEXT PK, request_id TEXT, user_id TEXT, user_name TEXT, text TEXT, ts TEXT);\n\nCREATE TABLE tickets (id TEXT PK, afm TEXT, cname TEXT, reason TEXT, status TEXT, created_by TEXT);\n\nCREATE TABLE afm_db (afm TEXT PK, ln TEXT, fn TEXT, mob TEXT, city TEXT);\n\nCREATE TABLE custom_fields (id SERIAL, label TEXT, type TEXT, max_chars INT, required BOOL, active BOOL);\n\nCREATE TABLE dropdown_lists (id SERIAL, name TEXT, items JSONB);"}</pre></div></div>);
+<pre style={{fontSize:"0.68rem",lineHeight:1.4,overflowX:"auto",whiteSpace:"pre-wrap",color:"#CCC"}}>{"CREATE TABLE users (id TEXT PK, username TEXT, password TEXT, name TEXT, email TEXT, role TEXT, partner TEXT, active BOOL, paused BOOL, can_create BOOL);\n\nCREATE TABLE requests (id TEXT PK, provider TEXT, ln TEXT, fn TEXT, afm TEXT, mob TEXT, program TEXT, service TEXT, status TEXT, partner TEXT, agent_id TEXT, price TEXT, created TEXT);\n\nCREATE TABLE comments (id TEXT PK, request_id TEXT, user_id TEXT, user_name TEXT, text TEXT, ts TEXT);\n\nCREATE TABLE tickets (id TEXT PK, afm TEXT, cname TEXT, reason TEXT, status TEXT, created_by TEXT);\n\nCREATE TABLE afm_database (afm TEXT PK, ln TEXT, fn TEXT, mob TEXT, city TEXT);\n\nCREATE TABLE custom_fields (id SERIAL, label TEXT, type TEXT, max_chars INT, required BOOL, active BOOL);\n\nCREATE TABLE dropdown_lists (id SERIAL, name TEXT, items JSONB);"}</pre></div></div>);
 
 return <div style={{textAlign:"center",padding:40,color:"#999"}}>Επιλέξτε κατηγορία</div>;
 }
