@@ -921,22 +921,22 @@ return(
 </>}
 
 {(isLand||isEnergy)&&<>
-<div style={{marginTop:10,padding:14,background:isEnergy?"linear-gradient(135deg,#FFF3E0,#F5F5F5)":"linear-gradient(135deg,#E3F2FD,#F5F5F5)",borderRadius:10,border:`1px solid ${isEnergy?"#FFB74D":"#90CAF9"}`}}>
-<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-<span style={{fontWeight:700,fontSize:"0.88rem",color:isEnergy?"#E65100":"#1565C0"}}>📍 Διεύθυνση Εγκατάστασης</span>
-<div style={{display:"flex",gap:6}}>
-<button onClick={()=>updLineMulti(i,{instAddr:form.addr,instCity:form.city,instTk:form.tk})} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #1565C0",background:"white",color:"#1565C0",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Κύρια</button>
-{form.billAddr&&<button onClick={()=>updLineMulti(i,{instAddr:form.billAddr,instCity:form.billCity,instTk:form.billTk})} style={{padding:"5px 12px",borderRadius:6,border:"1px solid #FF6F00",background:"white",color:"#FF6F00",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📋 Λογ/σμών</button>}
+<div style={{marginTop:8,padding:10,background:"linear-gradient(135deg,#FFF3E0,#F5F5F5)",borderRadius:8,border:"1px solid #FFB74D"}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+<span style={{fontWeight:700,fontSize:"0.8rem",color:"#E65100"}}>📍 Διεύθυνση Εγκατάστασης</span>
+<div style={{display:"flex",gap:4}}>
+<button onClick={()=>updLineMulti(i,{instAddr:form.addr,instCity:form.city,instTk:form.tk})} style={{padding:"3px 10px",borderRadius:4,border:"1px solid #E65100",background:"white",color:"#E65100",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>📋 Κύρια</button>
+{form.billAddr&&<button onClick={()=>updLineMulti(i,{instAddr:form.billAddr,instCity:form.billCity,instTk:form.billTk})} style={{padding:"3px 10px",borderRadius:4,border:"1px solid #FF6F00",background:"white",color:"#FF6F00",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>📋 Λογ/σμών</button>}
 </div>
 </div>
-<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
-<FL l="Διεύθυνση"><input value={ln.instAddr||""} onChange={e=>updLine(i,"instAddr",e.target.value)} placeholder="Οδός & αριθμός" style={iS}/></FL>
+<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:6}}>
+<FL l="Διεύθυνση"><input value={ln.instAddr||""} onChange={e=>updLine(i,"instAddr",e.target.value)} style={iS}/></FL>
 <FL l="Πόλη"><input value={ln.instCity||""} onChange={e=>updLine(i,"instCity",e.target.value)} style={iS}/></FL>
-<FL l="ΤΚ"><input value={ln.instTk||""} onChange={e=>updLine(i,"instTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} maxLength={5} style={iS}/></FL>
-<FL l="📌 Lat"><input type="text" value={ln.instLat||""} onChange={e=>updLine(i,"instLat",e.target.value)} placeholder="37.9838" style={iS}/></FL>
-<FL l="📌 Lng"><input type="text" value={ln.instLng||""} onChange={e=>updLine(i,"instLng",e.target.value)} placeholder="23.7275" style={iS}/></FL>
+<FL l="ΤΚ"><input value={ln.instTk||""} onChange={e=>updLine(i,"instTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} style={iS}/></FL>
+<FL l="Lat"><input value={ln.instLat||""} onChange={e=>updLine(i,"instLat",e.target.value)} placeholder="37.98" style={iS}/></FL>
+<FL l="Lng"><input value={ln.instLng||""} onChange={e=>updLine(i,"instLng",e.target.value)} placeholder="23.72" style={iS}/></FL>
 </div>
-{ln.instLat&&ln.instLng&&<div style={{marginTop:6}}><a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{padding:"4px 12px",borderRadius:6,background:"#1565C0",color:"white",fontSize:"0.72rem",fontWeight:600,textDecoration:"none",display:"inline-block"}}>🗺️ Προβολή στο χάρτη</a></div>}
+{ln.instLat&&ln.instLng&&<div style={{marginTop:4}}><a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{fontSize:"0.7rem",color:"#1565C0",fontWeight:600}}>🗺️ Χάρτης</a></div>}
 </div>
 </>}
 
