@@ -463,7 +463,7 @@ if(!cu)return(
 <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#1A1A2E,#16213E)",fontFamily:"'DM Sans',sans-serif"}}>
 <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
 <div style={{background:"white",borderRadius:16,padding:36,width:380,boxShadow:"0 20px 60px rgba(0,0,0,0.3)"}}>
-<div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:"2.5rem",marginBottom:8}}>📡</div><h1 style={{fontFamily:"'Outfit'",fontWeight:900,fontSize:"1.5rem"}}>Telecom CRM</h1><p style={{color:"#888",fontSize:"0.85rem"}}>Vodafone • Cosmote • Nova</p></div>
+<div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:"2.5rem",marginBottom:8}}>📡</div><h1 style={{fontFamily:"'Outfit'",fontWeight:900,fontSize:"1.5rem"}}>CRM Electrigon</h1><p style={{color:"#888",fontSize:"0.85rem"}}>Vodafone • Cosmote • Nova</p></div>
 <div style={{display:"flex",flexDirection:"column",gap:12}}>
 <input placeholder="Username" value={lf.un} onChange={e=>setLF(f=>({...f,un:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} style={iS}/>
 <input placeholder="Password" type="password" value={lf.pw} onChange={e=>setLF(f=>({...f,pw:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&doLogin()} style={iS}/>
@@ -497,7 +497,7 @@ return(
 </div></div>
 {/* PROVIDERS + ENERGY in header */}
 <div style={{display:"flex",justifyContent:"center",gap:6,padding:"6px 20px",background:"rgba(0,0,0,0.15)",flexWrap:"wrap"}}>
-{(cu.accessGroup==="all"||cu.accessGroup==="telecom"||cu.role==="admin"||cu.role==="director")&&Object.entries(PROVIDERS).map(([k,p])=><button key={k} onClick={()=>{setProv(k);setSF("all");setVM("list");setTab("dash");}} style={{padding:"4px 12px",borderRadius:6,border:"none",background:prov===k&&tab!=="energy_tab"?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:prov===k&&tab!=="energy_tab"?1:0.7,display:"flex",alignItems:"center",gap:4}}>{p.logo?<img src={p.logo} alt={p.name} style={{height:20,objectFit:"contain"}}/>:<span>{p.icon}</span>} <span>{p.name}</span></button>)}
+{(cu.accessGroup==="all"||cu.accessGroup==="telecom"||cu.role==="admin"||cu.role==="director")&&Object.entries(PROVIDERS).map(([k,p])=><button key={k} onClick={()=>{setProv(k);setSF("all");setVM("list");setTab("dash");}} style={{padding:"4px 12px",borderRadius:6,border:"none",background:prov===k&&!tab.startsWith("e_")?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:prov===k&&!tab.startsWith("e_")?1:0.7,display:"flex",alignItems:"center",gap:4}}>{p.logo?<img src={p.logo} alt={p.name} style={{height:20,objectFit:"contain"}}/>:<span>{p.icon}</span>} <span>{p.name}</span></button>)}
 {(cu.accessGroup==="all"||cu.accessGroup==="energy"||cu.role==="admin"||cu.role==="director")&&<button onClick={()=>{setTab("e_dash");}} style={{padding:"4px 14px",borderRadius:6,border:"none",background:tab.startsWith("e_")?"rgba(255,255,255,0.25)":"transparent",color:"white",cursor:"pointer",fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.75rem",opacity:tab.startsWith("e_")?1:0.7,display:"flex",alignItems:"center",gap:4}}><span>⚡</span> <span>Ρεύμα</span></button>}
 </div>
 </div>
