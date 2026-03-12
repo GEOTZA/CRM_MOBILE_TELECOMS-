@@ -919,6 +919,7 @@ return(
 
 {isLand&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/[^\d]/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
 </>}
+</div>{/* end fields grid */}
 
 {(isLand||isEnergy)&&<>
 <div style={{marginTop:8,padding:10,background:"linear-gradient(135deg,#FFF3E0,#F5F5F5)",borderRadius:8,border:"1px solid #FFB74D"}}>
@@ -940,7 +941,7 @@ return(
 </div>
 </>}
 
-</div></div>);})}
+</div>);})}
 
 {/* TOTALS */}
 <div style={{background:"#F5F5F5",borderRadius:10,padding:14,marginTop:8}}>
