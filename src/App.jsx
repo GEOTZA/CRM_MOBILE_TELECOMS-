@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
+import EnergyCompare from "./energy/energyCompare"
 
 /* ═══ SHEETJS XLSX EXPORT ═══ */
 const loadXLSX=()=>new Promise((res,rej)=>{
