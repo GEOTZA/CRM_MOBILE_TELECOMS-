@@ -2,7 +2,7 @@ import { useState } from "react"
 import { recommendTariffs } from "./energyEngine"
 
 export default function EnergyCompare(){
-
+const res = await fetch("/.netlify/functions/energy?type=ρεύμα_οικιακό")
 const [kwh,setKwh]=useState(300)
 const [type,setType]=useState("ρεύμα_οικιακό")
 const [results,setResults]=useState([])
