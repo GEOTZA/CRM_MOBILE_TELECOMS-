@@ -277,6 +277,63 @@ const[lf,setLF]=useState({un:"",pw:""});
 
 const P=cu?PERMS[cu.role]:{};const pr=PROVIDERS[prov];const rl=cu?ROLES[cu.role]:{};
 const addN=(uid,txt)=>setNotifs(p=>[{id:`N${Date.now()}`,uid,txt,ts:ts(),read:0},...p]);
+
+// ═══ EMAIL NOTIFICATIONS ═══
+const sendEmail=async(to,subject,body)=>{
+  if(!to)return;
+  try{
+    const res=await fetch("/.netlify/functions/send-email",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({to,subject,html:`
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:20px">
+          <div style="background:linear-gradient(135deg,#E60000,#FF6F00);padding:16px 20px;border-radius:8px 8px 0 0;color:white">
+            <h1 style="margin:0;font-size:1.2rem">CRM Electrigon</h1>
+          </div>
+          <div style="background:white;padding:20px;border:1px solid #E0E0E0;border-radius:0 0 8px 8px">
+            ${body}
+            <hr style="border:none;border-top:1px solid #E0E0E0;margin:20px 0"/>
+            <p style="font-size:0.75rem;color:#999">Αυτό το email στάλθηκε αυτόματα από το CRM Electrigon.</p>
+          </div>
+        </div>`
+      })
+    });
+    if(res.ok)console.log("📧 Email sent to:",to);
+    else console.error("📧 Email failed:",await res.text());
+  }catch(e){console.error("📧 Email error:",e);}
+};
+
+// Email notification triggers
+const notifyNewRequest=(reqId,agentName,provName,customerName)=>{
+  const boUsers=users.filter(u=>u.role==="backoffice"||u.role==="director");
+  boUsers.forEach(u=>{
+    if(u.email)sendEmail(u.email,`Νέα αίτηση ${reqId}`,
+      `<h2>📨 Νέα Αίτηση</h2>
+       <p><strong>ID:</strong> ${reqId}</p>
+       <p><strong>Πελάτης:</strong> ${customerName}</p>
+       <p><strong>Πάροχος:</strong> ${provName}</p>
+       <p><strong>Agent:</strong> ${agentName}</p>
+       <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Άνοιγμα CRM</a></p>`);
+  });
+};
+
+const notifyStatusChange=(reqId,newStatus,agentEmail,agentName)=>{
+  const st=ST[newStatus]||{l:newStatus,i:"📋"};
+  if(agentEmail)sendEmail(agentEmail,`Αλλαγή κατάστασης ${reqId} → ${st.l}`,
+    `<h2>${st.i} Αλλαγή Κατάστασης</h2>
+     <p><strong>Αίτηση:</strong> ${reqId}</p>
+     <p><strong>Νέα κατάσταση:</strong> ${st.i} ${st.l}</p>
+     <p><strong>Από:</strong> ${cu?.name||"Σύστημα"}</p>
+     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες την αίτηση</a></p>`);
+};
+
+const notifyComment=(reqId,commenterName,agentEmail)=>{
+  if(agentEmail)sendEmail(agentEmail,`Νέο σχόλιο στο ${reqId}`,
+    `<h2>💬 Νέο Σχόλιο</h2>
+     <p><strong>Αίτηση:</strong> ${reqId}</p>
+     <p><strong>Από:</strong> ${commenterName}</p>
+     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#2196F3;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες το σχόλιο</a></p>`);
+};
 const myN=notifs.filter(n=>n.uid===cu?.id&&!n.read);
 
 const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);r=r.filter(x=>x.status!=="draft"||x.agentId===cu.id);if(P.viewAll)return r;if(P.ownTeam){const myPartners=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myAgentIds=users.filter(u=>myPartners.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myAgentIds=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
@@ -369,7 +426,7 @@ const loadFromSupa=async()=>{
   }catch(e){console.error("Load error:",e);}
 }
 
-const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice")addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);if(req&&cu.role==="agent")users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`));};
+const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice"){addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);const ag=users.find(u=>u.id===req.agentId);if(ag?.email)notifyComment(rid,cu.name,ag.email);}if(req&&cu.role==="agent"){users.filter(u=>u.role==="backoffice").forEach(u=>{addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`);if(u.email)notifyComment(rid,cu.name,u.email);});}};
 
 // ═══ VALIDATION ═══
 const validateCustomer=(f,editId)=>{
@@ -433,6 +490,7 @@ const saveReq=async(f)=>{
         auditLog(cu.id,"create","requests",nr.id,{provider:prov,afm:nr.afm});
         // Notify backoffice & director on new request
         users.filter(u=>u.role==="backoffice"||u.role==="director").forEach(u=>addN(u.id,`📨 Νέα αίτηση ${nr.id} από ${cu.name}`));
+        notifyNewRequest(nr.id,cu.name,PROVIDERS[prov]?.name||prov,`${nr.ln} ${nr.fn}`);
       }
       // Auto-save customer to AFM database (upsert)
       if(nr.afm){
@@ -621,7 +679,7 @@ return(<>
 {tab==="dash"&&(vm==="form"||vm==="edit")&&<ReqForm pr={pr} prov={prov} onSave={saveReq} onCancel={()=>setVM("list")} ed={vm==="edit"?sel:null} db={afmDb} P={P} cu={cu}/>}
 
 {/* DETAIL */}
-{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
+{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);const agentU=users.find(u=>u.id===sel.agentId);if(agentU?.email)notifyStatusChange(sel.id,s,agentU.email,agentU.name);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
 {/* ═══ SEARCH ═══ */}
@@ -846,7 +904,7 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Πελάτης</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
 {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"text"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο",1],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ",1],["tk","ΤΚ",1],["addr","Διεύθυνση",1],["city","Πόλη",1]].map(([f,l,r,t])=>
-<FL key={f} l={l} req={!!r}><input type={t||"text"} value={f==="bd"&&form[f]&&form[f].includes("-")?form[f].split("-").reverse().join("/"):(form[f]||"")} placeholder={f==="bd"?"ΗΗ/ΜΜ/ΕΕΕΕ":""} onChange={e=>{let v=e.target.value;if(f==="bd"){v=v.replace(/[^\d/]/g,"").slice(0,10);const p=v.split("/");if(p.length===3&&p[2].length===4){const iso=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;if(!isNaN(new Date(iso)))v=iso;}}s(f,v);}} style={iS}/></FL>)}
+<FL key={f} l={l} req={!!r}><input type={t||"text"} value={f==="bd"&&form[f]&&form[f].includes("-")?form[f].split("-").reverse().join("/"):(form[f]||"")} placeholder={f==="bd"?"ΗΗ/ΜΜ/ΕΕΕΕ":f==="afm"?"9 ψηφία":f==="mob"?"69xxxxxxxx":f==="ph"?"21xxxxxxxx":f==="adt"?"Ελληνικοί χαρακτήρες":""} maxLength={f==="afm"?9:f==="mob"||f==="ph"?10:f==="tk"?5:undefined} onChange={e=>{let v=e.target.value;if(f==="afm")v=v.replace(/\D/g,"").slice(0,9);else if(f==="mob"||f==="ph"||f==="tk")v=v.replace(/\D/g,"").slice(0,f==="tk"?5:10);else if(f==="adt")v=v.replace(/[^Α-Ωα-ωΆ-Ώά-ώ0-9\s]/g,"");else if(f==="bd"){v=v.replace(/[^\d/]/g,"").slice(0,10);const p=v.split("/");if(p.length===3&&p[2].length===4){const iso=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;if(!isNaN(new Date(iso)))v=iso;}}s(f,v);}} style={iS}/></FL>)}
 </div></div>
 
 {/* Partner */}
@@ -1330,11 +1388,11 @@ const bos=users.filter(u=>u.role==="backoffice");
 const dirs=users.filter(u=>u.role==="director");
 let tree="═══ ΔΕΝΤΡΟ ΧΡΗΣΤΩΝ CRM Electrigon ═══\n\n";
 tree+="👑 Admin\n";
-users.filter(u=>u.role==="admin").forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${u.accessGroup||"all"}]\n`);
+users.filter(u=>u.role==="admin").forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${(u.accessGroup||"all")==="all"?"Όλα":u.accessGroup==="telecom"?"Telecom":"Ρεύμα"}]\n`);
 tree+="\n🎯 Directors\n";
-dirs.forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${u.accessGroup||"all"}]\n`);
+dirs.forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${(u.accessGroup||"all")==="all"?"Όλα":u.accessGroup==="telecom"?"Telecom":"Ρεύμα"}]\n`);
 tree+="\n🏢 BackOffice\n";
-bos.forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${u.accessGroup||"all"}]\n`);
+bos.forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${(u.accessGroup||"all")==="all"?"Όλα":u.accessGroup==="telecom"?"Telecom":"Ρεύμα"}]\n`);
 tree+="\n📋 Supervisors & Ομάδες\n";
 spvs.forEach(spv=>{
   tree+=`  └── 📋 ${spv.name} [${spv.accessGroup||"all"}]\n`;
@@ -1518,7 +1576,7 @@ const EnergyForm=({ed,onCancel})=>{
     const base={id:"",ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",
       partner:cu.partner||"",agentId:cu.id,agentName:cu.name,status:"draft",notes:"",created:"",prov:"energy",
       energyLines:[{id:Date.now(),eProv:"dei",prog:"",progCustom:"",price:"",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:"",fromProv:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""}],
-      startDate:"",duration:"24",endDate:"",creditDate:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,docs:[],sig:null};
+      startDate:"",duration:"24",endDate:"",creditDate:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,cour:"",cAddr:"",cCity:"",cTk:"",docs:[],sig:null};
     return ed?{...base,...ed,energyLines:ed.lines||ed.energyLines||base.energyLines}:base;
   });
   const s=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1567,7 +1625,7 @@ const EnergyForm=({ed,onCancel})=>{
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>👤 Πελάτης</div>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
   {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"text"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο"],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ"],["addr","Διεύθυνση",1],["city","Πόλη",1],["tk","ΤΚ",1]].map(([f,l,r,t])=>
-  <FL key={f} l={l} req={!!r}><input type={t||"text"} value={f==="bd"&&form[f]&&form[f].includes("-")?form[f].split("-").reverse().join("/"):(form[f]||"")} placeholder={f==="bd"?"ΗΗ/ΜΜ/ΕΕΕΕ":""} onChange={e=>{let v=e.target.value;if(f==="bd"){v=v.replace(/[^\d/]/g,"").slice(0,10);const p=v.split("/");if(p.length===3&&p[2].length===4){const iso=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;if(!isNaN(new Date(iso)))v=iso;}}s(f,v);}} style={iS}/></FL>)}
+  <FL key={f} l={l} req={!!r}><input type={t||"text"} value={f==="bd"&&form[f]&&form[f].includes("-")?form[f].split("-").reverse().join("/"):(form[f]||"")} placeholder={f==="bd"?"ΗΗ/ΜΜ/ΕΕΕΕ":f==="afm"?"9 ψηφία":f==="mob"?"69xxxxxxxx":f==="adt"?"Ελληνικοί χαρακτήρες":""} maxLength={f==="afm"?9:f==="mob"||f==="ph"?10:f==="tk"?5:undefined} onChange={e=>{let v=e.target.value;if(f==="afm")v=v.replace(/\D/g,"").slice(0,9);else if(f==="mob"||f==="ph"||f==="tk")v=v.replace(/\D/g,"").slice(0,f==="tk"?5:10);else if(f==="adt")v=v.replace(/[^Α-Ωα-ωΆ-Ώά-ώ0-9\s]/g,"");else if(f==="bd"){v=v.replace(/[^\d/]/g,"").slice(0,10);const p=v.split("/");if(p.length===3&&p[2].length===4){const iso=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;if(!isNaN(new Date(iso)))v=iso;}}s(f,v);}} style={iS}/></FL>)}
   </div>
   {/* Billing Address */}
   <div style={{marginTop:8}}>
@@ -1647,6 +1705,20 @@ const EnergyForm=({ed,onCancel})=>{
 
   {/* Notes */}
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
+  {/* Courier */}
+  <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
+  <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>🚚 Courier</div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:6}}>
+  <FL l="Courier"><select value={form.cour||""} onChange={e=>s("cour",e.target.value)} style={iS}><option value="">—</option>{["ACS","Speedex","ΕΛΤΑ Courier","DHL","Γενική Ταχ."].map(x=><option key={x}>{x}</option>)}</select></FL>
+  <FL l="Διεύθυνση"><input value={form.cAddr||""} onChange={e=>s("cAddr",e.target.value)} style={iS}/></FL>
+  <FL l="Πόλη"><input value={form.cCity||""} onChange={e=>s("cCity",e.target.value)} style={iS}/></FL>
+  <FL l="ΤΚ"><input value={form.cTk||""} onChange={e=>s("cTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} style={iS}/></FL>
+  </div>
+  <button onClick={()=>{s("cAddr",form.addr);s("cCity",form.city);s("cTk",form.tk);}} style={{marginTop:6,padding:"3px 10px",borderRadius:4,border:"1px solid #1565C0",background:"white",color:"#1565C0",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>📋 Αντιγραφή από κύρια</button>
+  </div>
+
+  {/* Notes */}
+  <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   <FL l="Σημειώσεις"><textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></FL></div>
 
   {/* Save */}
@@ -1670,7 +1742,7 @@ return(<div>
 {/* DETAIL VIEW */}
 {eVM==="detail"&&eSel&&(()=>{const r=eSel;const st=ST[r.status]||{};const lines=r.lines||r.energyLines||[];const docs=r.documents?typeof r.documents==="string"?JSON.parse(r.documents):r.documents:[];
 const expEPDF=()=>{const el=lines[0]||{};const ep=ENERGY_PROVIDERS[el.eProv]||{name:"—"};const f=(l,v)=>`<div style="margin-bottom:3px"><span style="font-size:0.65rem;color:#999;text-transform:uppercase;font-weight:600;display:block">${l}</span><span style="font-size:0.84rem;font-weight:500">${v||"—"}</span></div>`;const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${r.id}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:auto;color:#222}.h{background:linear-gradient(135deg,#FF6F00,#F4511E);color:#fff;padding:14px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between}.h h1{font-size:1.1rem}.sc{border:1px solid #E0E0E0;border-radius:5px;padding:12px;margin-bottom:10px}.st{font-weight:700;font-size:0.88rem;margin-bottom:8px;border-bottom:2px solid #FF6F00;padding-bottom:3px}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.sig{text-align:center;padding:10px}.sig img{max-width:260px}@media print{@page{margin:1cm}}</style></head><body><div class="h"><h1>⚡ ${r.id} — ${ep.name}</h1><span style="background:${st.bg||"#F5F5F5"};color:${st.c||"#333"};padding:3px 8px;border-radius:4px;font-size:0.76rem;font-weight:700">${st.i} ${st.l}</span></div><div class="sc"><div class="st">👤 Πελάτης</div><div class="g">${[["Επώνυμο",r.ln],["Όνομα",r.fn],["ΑΦΜ",r.afm],["ΑΔΤ",r.adt],["Κινητό",r.mob],["Διεύθυνση",r.addr],["Πόλη",r.city],["ΤΚ",r.tk],["Email",r.em]].map(([a,b])=>f(a,b)).join("")}</div></div>${lines.map((el2,i)=>`<div class="sc"><div class="st">⚡ Παροχή ${i+1} — ${ENERGY_PROVIDERS[el2.eProv]?.name||""}</div><div class="g">${[["Πρόγραμμα",el2.progCustom||el2.prog],["Τιμή","€"+(el2.price||"0")],["Τιμολόγιο",el2.eInvoiceColor],["Τύπος",el2.eType],["Πληρωμή",el2.ePayment],["Ενέργεια",el2.eAction],["Αρ.Παροχής",el2.eParochi],["ΗΚΑΣΠ",el2.eHkasp],["Εγκατάσταση",(el2.instAddr||"")+" "+(el2.instCity||"")]].map(([a,b])=>f(a,b)).join("")}</div></div>`).join("")}<div class="sc"><div class="st">✍️ Υπογραφή</div><div class="sig">${r.sig?`<img src="${r.sig}"/>`:"—"}</div></div><script>window.onload=()=>window.print()</script></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();};
-const expEA5=()=>{const el=lines[0]||{};const ep=ENERGY_PROVIDERS[el.eProv]||{name:"—"};const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>A5 ${r.id}</title><style>*{margin:0;padding:0;box-sizing:border-box}@page{size:A5;margin:10mm}body{font-family:Arial,sans-serif;width:148mm;padding:10mm;margin:auto}.h{background:linear-gradient(135deg,#FF6F00,#F4511E);color:#fff;padding:8px 12px;border-radius:5px;margin-bottom:10px;display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem}.b{border:1.5px solid #333;border-radius:4px;padding:8px;margin-bottom:7px}.bt{font-weight:700;font-size:0.78rem;margin-bottom:5px;color:#FF6F00}.r{display:flex;gap:6px;margin-bottom:2px;font-size:0.8rem}.lb{color:#666;font-weight:600;min-width:70px}.big{font-size:0.95rem;font-weight:700}</style></head><body><div class="h"><span>⚡ ${r.id} — ${ep.name}</span></div><div class="b"><div class="bt">👤 Πελάτης</div><div class="r"><span class="lb">Ονομ:</span><span class="big">${r.ln} ${r.fn}</span></div><div class="r"><span class="lb">Κιν:</span><span class="big">${r.mob||""}</span></div><div class="r"><span class="lb">ΑΦΜ:</span><span>${r.afm||""}</span></div></div><div class="b"><div class="bt">⚡ Παροχή</div><div class="r"><span class="lb">Πάροχος:</span><span class="big">${ep.name}</span></div><div class="r"><span class="lb">Πρόγρ:</span><span>${el.progCustom||el.prog||""}</span></div><div class="r"><span class="lb">Αρ.Παρ:</span><span>${el.eParochi||""}</span></div></div><div class="b"><div class="bt">📍 Εγκατάσταση</div><div class="r"><span class="lb">Διεύθ:</span><span class="big">${el.instAddr||""}</span></div><div class="r"><span class="lb">Πόλη:</span><span>${el.instCity||""}</span></div><div class="r"><span class="lb">ΤΚ:</span><span class="big">${el.instTk||""}</span></div></div><script>window.onload=()=>window.print()</script></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();};
+const expEA5=()=>{const el=lines[0]||{};const ep=ENERGY_PROVIDERS[el.eProv]||{name:"—"};const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Courier ${r.id}</title><style>*{margin:0;padding:0;box-sizing:border-box}@page{size:A5;margin:10mm}body{font-family:Arial,sans-serif;width:148mm;padding:10mm;margin:auto}.h{background:linear-gradient(135deg,#FF6F00,#F4511E);color:#fff;padding:8px 12px;border-radius:5px;margin-bottom:10px;display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem}.b{border:1.5px solid #333;border-radius:4px;padding:8px;margin-bottom:7px}.bt{font-weight:700;font-size:0.78rem;margin-bottom:5px;color:#FF6F00}.r{display:flex;gap:6px;margin-bottom:2px;font-size:0.8rem}.lb{color:#666;font-weight:600;min-width:70px}.big{font-size:0.95rem;font-weight:700}</style></head><body><div class="h"><span>🚚 COURIER — ⚡ ${r.id}</span><span>${ep.name}</span></div><div class="b"><div class="bt">📦 Παραλήπτης</div><div class="r"><span class="lb">Ονομ:</span><span class="big">${r.ln} ${r.fn}</span></div><div class="r"><span class="lb">Κιν:</span><span class="big">${r.mob||""}</span></div><div class="r"><span class="lb">Τηλ:</span><span>${r.ph||""}</span></div></div><div class="b"><div class="bt">📍 Αποστολή</div><div class="r"><span class="lb">Διεύθ:</span><span class="big">${r.cAddr||""}</span></div><div class="r"><span class="lb">Πόλη:</span><span>${r.cCity||""}</span></div><div class="r"><span class="lb">ΤΚ:</span><span class="big">${r.cTk||""}</span></div></div><div class="b"><div class="bt">🚚 Στοιχεία</div><div class="r"><span class="lb">Courier:</span><span>${r.cour||""}</span></div><div class="r"><span class="lb">Πάροχος:</span><span>${ep.name}</span></div><div class="r"><span class="lb">Πρόγρ:</span><span>${el.progCustom||el.prog||""}</span></div></div><script>window.onload=()=>window.print()</script></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();};
 return(<div style={{maxWidth:900,margin:"0 auto"}}>
 <div style={{background:"linear-gradient(135deg,#FF6F00,#F4511E)",borderRadius:12,padding:16,color:"white",marginBottom:14}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
