@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 
-
 /* ═══ SHEETJS XLSX EXPORT ═══ */
 const loadXLSX=()=>new Promise((res,rej)=>{
   if(window.XLSX)return res(window.XLSX);
@@ -847,7 +846,7 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Πελάτης</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
 {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"text"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο",1],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ",1],["tk","ΤΚ",1],["addr","Διεύθυνση",1],["city","Πόλη",1]].map(([f,l,r,t])=>
-<FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
+<FL key={f} l={l} req={!!r}><input type={t||"text"} value={f==="bd"&&form[f]&&form[f].includes("-")?form[f].split("-").reverse().join("/"):(form[f]||"")} placeholder={f==="bd"?"ΗΗ/ΜΜ/ΕΕΕΕ":""} onChange={e=>{let v=e.target.value;if(f==="bd"){v=v.replace(/[^\d/]/g,"").slice(0,10);const p=v.split("/");if(p.length===3&&p[2].length===4){const iso=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;if(!isNaN(new Date(iso)))v=iso;}}s(f,v);}} style={iS}/></FL>)}
 </div></div>
 
 {/* Partner */}
@@ -1321,7 +1320,44 @@ const[editUser,setEditUser]=useState(null);const[resetPW,setResetPW]=useState({s
 return(<div>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900}}>👥 Χρήστες</h1>
-<button onClick={()=>setShow(!show)} style={B(pr.grad,"white",{padding:"9px 20px"})}>➕ Νέος</button></div>
+<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+<button onClick={()=>setShow(!show)} style={B(pr.grad,"white",{padding:"9px 20px"})}>➕ Νέος</button>
+{(cu.role==="admin"||cu.role==="director")&&<button onClick={()=>{
+const spvs=users.filter(u=>u.role==="supervisor");
+const partners=users.filter(u=>u.role==="partner");
+const agents=users.filter(u=>u.role==="agent");
+const bos=users.filter(u=>u.role==="backoffice");
+const dirs=users.filter(u=>u.role==="director");
+let tree="═══ ΔΕΝΤΡΟ ΧΡΗΣΤΩΝ CRM Electrigon ═══\n\n";
+tree+="👑 Admin\n";
+users.filter(u=>u.role==="admin").forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${u.accessGroup||"all"}]\n`);
+tree+="\n🎯 Directors\n";
+dirs.forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${u.accessGroup||"all"}]\n`);
+tree+="\n🏢 BackOffice\n";
+bos.forEach(u=>tree+=`  └── ${u.name} (${u.un}) [${u.accessGroup||"all"}]\n`);
+tree+="\n📋 Supervisors & Ομάδες\n";
+spvs.forEach(spv=>{
+  tree+=`  └── 📋 ${spv.name} [${spv.accessGroup||"all"}]\n`;
+  const myPartners=partners.filter(p=>p.supervisor===spv.id||p.supervisor===spv.name);
+  myPartners.forEach(pt=>{
+    tree+=`      └── 🤝 ${pt.name}\n`;
+    const myAgents=agents.filter(a=>a.partner===pt.name);
+    myAgents.forEach(ag=>tree+=`          └── 👤 ${ag.name} [${ag.accessGroup||"all"}]\n`);
+  });
+  const directAgents=agents.filter(a=>a.supervisor===spv.id||a.supervisor===spv.name);
+  directAgents.forEach(ag=>tree+=`      └── 👤 ${ag.name} [${ag.accessGroup||"all"}]\n`);
+});
+tree+="\n🤝 Partners χωρίς SPV\n";
+partners.filter(p=>!p.supervisor).forEach(pt=>{
+  tree+=`  └── 🤝 ${pt.name}\n`;
+  agents.filter(a=>a.partner===pt.name).forEach(ag=>tree+=`      └── 👤 ${ag.name} [${ag.accessGroup||"all"}]\n`);
+});
+tree+="\n👤 Agents χωρίς Partner\n";
+agents.filter(a=>!a.partner).forEach(ag=>tree+=`  └── ${ag.name} [${ag.accessGroup||"all"}]\n`);
+tree+=`\nΣύνολο: ${users.length} χρήστες`;
+const blob=new Blob([tree],{type:"text/plain;charset=utf-8"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=`user_tree_${new Date().toISOString().slice(0,10)}.txt`;document.body.appendChild(a);a.click();document.body.removeChild(a);
+}} style={B("#9C27B0","white",{padding:"9px 16px"})}>🌳 Δέντρο</button>}
+</div></div>
 
 {show&&<div style={{background:"white",borderRadius:12,padding:18,marginBottom:16,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8,marginBottom:8}}>
@@ -1531,7 +1567,7 @@ const EnergyForm=({ed,onCancel})=>{
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>👤 Πελάτης</div>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
   {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"text"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο"],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ"],["addr","Διεύθυνση",1],["city","Πόλη",1],["tk","ΤΚ",1]].map(([f,l,r,t])=>
-  <FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
+  <FL key={f} l={l} req={!!r}><input type={t||"text"} value={f==="bd"&&form[f]&&form[f].includes("-")?form[f].split("-").reverse().join("/"):(form[f]||"")} placeholder={f==="bd"?"ΗΗ/ΜΜ/ΕΕΕΕ":""} onChange={e=>{let v=e.target.value;if(f==="bd"){v=v.replace(/[^\d/]/g,"").slice(0,10);const p=v.split("/");if(p.length===3&&p[2].length===4){const iso=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;if(!isNaN(new Date(iso)))v=iso;}}s(f,v);}} style={iS}/></FL>)}
   </div>
   {/* Billing Address */}
   <div style={{marginTop:8}}>
