@@ -212,7 +212,7 @@ const genReqs=()=>{const ps=["vodafone","cosmote","nova"];const sk=Object.keys(S
 const genTickets=()=>[{id:"TK-00001",afm:"123456789",cname:"Παπαδόπουλος Γιώργος",reason:"Καθυστέρηση αίτησης",reqId:"REQ-01000",by:"U06",byName:"Πέτρος Agent",byRole:"agent",at:ts(),status:"open",msgs:[{uid:"U06",uname:"Πέτρος Agent",role:"agent",text:"Η αίτηση καθυστερεί 5+ μέρες",ts:ts()}]}];
 
 // Signature Pad
-const SigPad=({onSave,ex})=>{const ref=useRef(null);const[dr,setDr]=useState(false);const[has,setHas]=useState(!!ex);
+const SigPad=({onSave,ex})=>{const ref=useRef(null);const [dr,setDr]=useState(false);const [has,setHas]=useState(!!ex);
 useEffect(()=>{const c=ref.current;if(!c)return;const x=c.getContext("2d");c.width=c.offsetWidth*2;c.height=c.offsetHeight*2;x.scale(2,2);x.strokeStyle="#1A1A2E";x.lineWidth=2;x.lineCap="round";if(ex){const img=new Image();img.onload=()=>x.drawImage(img,0,0,c.offsetWidth,c.offsetHeight);img.src=ex;}},[]);
 const pos=e=>{const r=ref.current.getBoundingClientRect();return{x:(e.touches?e.touches[0].clientX:e.clientX)-r.left,y:(e.touches?e.touches[0].clientY:e.clientY)-r.top}};
 const start=e=>{e.preventDefault();setDr(true);setHas(true);const x=ref.current.getContext("2d");const p=pos(e);x.beginPath();x.moveTo(p.x,p.y)};
@@ -265,15 +265,15 @@ const expReport=async(title,headers,rows,filename)=>{
 
 // ═══ MAIN APP ═══
 export default function App(){
-const[loggedIn,setLI]=useState(false);const[cu,setCU]=useState(null);const[gdprOk,setGDPR]=useState(false);const[supaLoaded,setSupaLoaded]=useState(false);const[users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
-const[reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const[tix,setTix]=useState(USE_SUPA?[]:genTickets);const[notifs,setNotifs]=useState([]);const[tixEnabled,setTixEnabled]=useState(true);
-const[offers,setOffers]=useState({vodafone:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],cosmote:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],nova:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}]});
-const[afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const[prov,setProv]=useState("vodafone");const[tab,setTab]=useState("dash");
-const[sbOpen,setSbOpen]=useState(true);const[qSearch,setQSearch]=useState("");
-const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
-const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]=useState("list");
-const[selTix,setSelTix]=useState(null);const[sysPaused,setSysPaused]=useState(false);
-const[lf,setLF]=useState({un:"",pw:""});
+const [loggedIn,setLI]=useState(false);const [cu,setCU]=useState(null);const [gdprOk,setGDPR]=useState(false);const [supaLoaded,setSupaLoaded]=useState(false);const [users,setUsers]=useState(USE_SUPA?[]:USERS_INIT);
+const [reqs,setReqs]=useState(USE_SUPA?[]:genReqs);const [tix,setTix]=useState(USE_SUPA?[]:genTickets);const [notifs,setNotifs]=useState([]);const [tixEnabled,setTixEnabled]=useState(true);
+const [offers,setOffers]=useState({vodafone:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],cosmote:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}],nova:[{desc:"",path:""},{desc:"",path:""},{desc:"",path:""}]});
+const [afmDb,setAfmDb]=useState(USE_SUPA?[]:AFM_DB);const [prov,setProv]=useState("vodafone");const [tab,setTab]=useState("dash");
+const [sbOpen,setSbOpen]=useState(true);const [qSearch,setQSearch]=useState("");
+const [srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
+const [sf,setSF]=useState("all");const [sel,setSel]=useState(null);const [vm,setVM]=useState("list");
+const [selTix,setSelTix]=useState(null);const [sysPaused,setSysPaused]=useState(false);
+const [lf,setLF]=useState({un:"",pw:""});
 
 const P=cu?PERMS[cu.role]:{};const pr=PROVIDERS[prov];const rl=cu?ROLES[cu.role]:{};
 const addN=(uid,txt)=>setNotifs(p=>[{id:`N${Date.now()}`,uid,txt,ts:ts(),read:0},...p]);
@@ -505,7 +505,7 @@ const saveReq=async(f)=>{
 }
 
 // FORCE CHANGE PASSWORD SCREEN
-const[changePW,setChangePW]=useState({newPW:"",confirm:""});
+const [changePW,setChangePW]=useState({newPW:"",confirm:""});
 if(cu&&cu.mustChangePW)return(
 <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#1A1A2E,#16213E)",fontFamily:"'DM Sans',sans-serif"}}>
 <style>{`@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;600;700&display=swap');`}</style>
@@ -841,13 +841,13 @@ const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{backgroun
 
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
 const emptyLine=(provKey,lineType)=>{const defType=lineType||(provKey&&PROVIDERS[provKey]?.programs?.mobile?.length===0?"landline":"mobile");return{id:Date.now()+Math.random(),type:defType,prog:"",progCustom:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:"",eProv:"dei",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:""};};
-const[form,setForm]=useState(()=>{
+const [form,setForm]=useState(()=>{
   const today=new Date().toISOString().slice(0,10);
   const initEnd=(()=>{const d=new Date();d.setMonth(d.getMonth()+24);return d.toISOString().slice(0,10);})();
   const base={ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",partner:cu.partner||"",cour:"",cAddr:"",cCity:"",cTk:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,notes:"",pendR:"",canR:"",status:"draft",sig:null,lines:[emptyLine(prov)],agentId:"",agentName:"",prov:"",startDate:"",duration:"24",endDate:"",creditDate:""};
   return ed?{...base,...ed}:base;
 });
-const[afmQ,setAfmQ]=useState("");const[found,setFound]=useState(null);
+const [afmQ,setAfmQ]=useState("");const [found,setFound]=useState(null);
 const s=(f,v)=>setForm(p=>({...p,[f]:v}));
 const search=async()=>{
   const q=afmQ.trim();if(!q)return;
@@ -1069,7 +1069,7 @@ return(
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>📅 Διάρκεια Συμβολαίου</div>
 {!form.startDate&&form.status!=="active"&&<div style={{background:"#FFF3E0",borderRadius:6,padding:8,marginBottom:8,fontSize:"0.76rem",color:"#E65100",fontWeight:600}}>⏳ Η ημ/νία έναρξης θα οριστεί αυτόματα κατά την ενεργοποίηση</div>}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8}}>
-<FL l="Ημ/νία Έναρξης">{(cu.role==="admin"||cu.role==="director"||cu.role==="backoffice")?<input type="text" value={form.startDate?fmtDateFull(form.startDate):""} placeholder="ΗΗ/ΜΜ/ΕΕΕΕ" onChange={e=>{let v=e.target.value.replace(/[^\d/]/g,"").slice(0,10);const parts=v.split("/");if(parts.length===3&&parts[2].length===4){const[dd,mm,yyyy]=parts;const iso=`${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;const testD=new Date(iso);if(!isNaN(testD)&&testD.toISOString().slice(0,10)===iso){s("startDate",iso);if(form.duration){const d2=new Date(iso);d2.setMonth(d2.getMonth()+parseInt(form.duration));s("endDate",d2.toISOString().slice(0,10));}}}}} style={iS}/>:<div style={{...iS,background:"#F5F5F5",display:"flex",alignItems:"center",minHeight:34,color:form.startDate?"#333":"#999"}}>{form.startDate?fmtDate(form.startDate):"Αυτόματα στην ενεργοποίηση"}</div>}</FL>
+<FL l="Ημ/νία Έναρξης">{(cu.role==="admin"||cu.role==="director"||cu.role==="backoffice")?<input type="text" value={form.startDate?fmtDateFull(form.startDate):""} placeholder="ΗΗ/ΜΜ/ΕΕΕΕ" onChange={e=>{let v=e.target.value.replace(/[^\d/]/g,"").slice(0,10);const parts=v.split("/");if(parts.length===3&&parts[2].length===4){const [dd,mm,yyyy]=parts;const iso=`${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;const testD=new Date(iso);if(!isNaN(testD)&&testD.toISOString().slice(0,10)===iso){s("startDate",iso);if(form.duration){const d2=new Date(iso);d2.setMonth(d2.getMonth()+parseInt(form.duration));s("endDate",d2.toISOString().slice(0,10));}}}}} style={iS}/>:<div style={{...iS,background:"#F5F5F5",display:"flex",alignItems:"center",minHeight:34,color:form.startDate?"#333":"#999"}}>{form.startDate?fmtDate(form.startDate):"Αυτόματα στην ενεργοποίηση"}</div>}</FL>
 <FL l="Διάρκεια (μήνες)"><select value={form.duration||"24"} onChange={e=>{const dur=e.target.value;s("duration",dur);if(form.startDate&&dur){const d=new Date(form.startDate);d.setMonth(d.getMonth()+parseInt(dur));s("endDate",d.toISOString().slice(0,10));}}} style={iS}><option value="12">12 μήνες</option><option value="18">18 μήνες</option><option value="24">24 μήνες</option></select></FL>
 <FL l="Ημ/νία Λήξης"><div style={{...iS,background:form.endDate?"#FFEBEE":"#F5F5F5",fontWeight:700,color:form.endDate?"#C62828":"#999",display:"flex",alignItems:"center",minHeight:34,borderRadius:6,padding:"0 10px"}}>{form.endDate?fmtDate(form.endDate):"—"}</div></FL>
 </div>
@@ -1126,7 +1126,7 @@ return(
 
 // ═══ DETAIL VIEW ═══
 function Detail({r,pr,prov,P,cu,onBack,onEdit,onComment,onSC}){
-const[ct,setCT]=useState("");const s=ST[r.status]||{};
+const [ct,setCT]=useState("");const s=ST[r.status]||{};
 
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
@@ -1241,8 +1241,8 @@ return <button key={i} onClick={()=>downloadDoc(d.path,d.name)} style={{padding:
 
 // ═══ TICKETS ═══
 function TixList({tix,cu,P,pr,onSel,onCreate,reqs,afmDb}){
-const[show,setShow]=useState(false);const[nt,setNT]=useState({afm:"",cname:"",reason:"",title:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null});
-const[custReqs,setCustReqs]=useState([]);
+const [show,setShow]=useState(false);const [nt,setNT]=useState({afm:"",cname:"",reason:"",title:"",reqId:"",msg:"",agentName:"",agentId:"",custInfo:null});
+const [custReqs,setCustReqs]=useState([]);
 const vis=P.viewAll?tix:tix.filter(t=>t.by===cu.id);
 
 // Customer search by AFM
@@ -1333,7 +1333,7 @@ return(<div>
 </tbody></table></div></div>);}
 
 function TixDetail({t,cu,pr,onBack,onReply,onClose,onDelete}){
-const[rp,setRP]=useState("");const[rpFiles,setRPFiles]=useState([]);
+const [rp,setRP]=useState("");const [rpFiles,setRPFiles]=useState([]);
 return(
 <div style={{background:"white",borderRadius:12,boxShadow:"0 4px 16px rgba(0,0,0,0.08)",overflow:"hidden"}}>
 <div style={{background:pr.grad,padding:"14px 20px",color:"white",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
@@ -1372,9 +1372,9 @@ return(
 
 // ═══ USER MANAGEMENT ═══
 function UserMgmt({users,setUsers,cu,P,pr}){
-const[show,setShow]=useState(false);const[nu,setNU]=useState({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:""});
-const[delCode,setDelCode]=useState("");const[delTarget,setDelTarget]=useState(null);
-const[editUser,setEditUser]=useState(null);const[resetPW,setResetPW]=useState({show:false,uid:null,uname:"",newPW:"",confirm:""});
+const [show,setShow]=useState(false);const [nu,setNU]=useState({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:""});
+const [delCode,setDelCode]=useState("");const [delTarget,setDelTarget]=useState(null);
+const [editUser,setEditUser]=useState(null);const [resetPW,setResetPW]=useState({show:false,uid:null,uname:"",newPW:"",confirm:""});
 return(<div>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900}}>👥 Χρήστες</h1>
@@ -1535,7 +1535,7 @@ setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Απ
 
 // ═══ ENERGY SEARCH ═══
 function EnergySearch({energyReqs,iS}){
-const[sq,setSQ]=useState("");
+const [sq,setSQ]=useState("");
 const res=sq.trim()?energyReqs.filter(r=>[r.id,r.ln,r.fn,r.afm,r.mob,r.agentName].some(v=>(v||"").toLowerCase().includes(sq.toLowerCase()))):[];
 return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🔍 Αναζήτηση Ρεύματος</h1>
@@ -1557,11 +1557,11 @@ return(<div>
 
 // ═══ ENERGY PANEL (Full CRM) ═══
 function EnergyPanel({cu,reqs,setReqs,users,afmDb,P,initTab}){
-const[eTab,setETab]=useState(initTab||"dash");
+const [eTab,setETab]=useState(initTab||"dash");
 useEffect(()=>{if(initTab)setETab(initTab);},[initTab]); // dash, form, detail, search, reports
-const[eVM,setEVM]=useState("list");
-const[eSel,setESel]=useState(null);
-const[eSF,setESF]=useState("all");
+const [eVM,setEVM]=useState("list");
+const [eSel,setESel]=useState(null);
+const [eSF,setESF]=useState("all");
 const energyReqs=reqs.filter(r=>r.prov==="energy"&&(r.status!=="draft"||r.agentId===cu.id));
 const eFR=energyReqs.filter(r=>eSF==="all"||r.status===eSF);
 const iS={width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid #DDD",fontSize:"0.82rem"};
@@ -1572,7 +1572,7 @@ eStats.total=energyReqs.length;
 
 // ═══ ENERGY FORM ═══
 const EnergyForm=({ed,onCancel})=>{
-  const[form,setForm]=useState(()=>{
+  const [form,setForm]=useState(()=>{
     const base={id:"",ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",
       partner:cu.partner||"",agentId:cu.id,agentName:cu.name,status:"draft",notes:"",created:"",prov:"energy",
       energyLines:[{id:Date.now(),eProv:"dei",prog:"",progCustom:"",price:"",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:"",fromProv:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""}],
@@ -1580,7 +1580,7 @@ const EnergyForm=({ed,onCancel})=>{
     return ed?{...base,...ed,energyLines:ed.lines||ed.energyLines||base.energyLines}:base;
   });
   const s=(k,v)=>setForm(p=>({...p,[k]:v}));
-  const[afmQ,setAfmQ]=useState("");
+  const [afmQ,setAfmQ]=useState("");
   const searchAfm=()=>{const q=afmQ.trim();if(!q)return;const r=afmDb.find(x=>x.afm===q);if(r){setAfmQ("");setForm(p=>({...p,ln:r.ln||p.ln,fn:r.fn||p.fn,fat:r.fat||p.fat,bd:r.bd||p.bd,adt:r.adt||p.adt,ph:r.ph||p.ph,mob:r.mob||p.mob,em:r.em||p.em,afm:r.afm||p.afm,doy:r.doy||p.doy,tk:r.tk||p.tk,addr:r.addr||p.addr,city:r.city||p.city}));}else{alert("Δεν βρέθηκε στη βάση");}};
 
   const updEL=(i,k,v)=>setForm(p=>{const nl=[...(p.energyLines||[])];if(nl[i])nl[i]={...nl[i],[k]:v};return{...p,energyLines:nl};});
@@ -1894,11 +1894,11 @@ return(
 
 // ═══ TOOLS PANEL ═══
 function ToolsPanel(){
-const[convFile,setConvFile]=useState(null);
-const[convStatus,setConvStatus]=useState("");
-const[mergeFiles,setMergeFiles]=useState([]);
-const[mergeStatus,setMergeStatus]=useState("");
-const[dragOver,setDragOver]=useState(false);
+const [convFile,setConvFile]=useState(null);
+const [convStatus,setConvStatus]=useState("");
+const [mergeFiles,setMergeFiles]=useState([]);
+const [mergeStatus,setMergeStatus]=useState("");
+const [dragOver,setDragOver]=useState(false);
 
 const loadPdfLib=async()=>{
   if(window.PDFLib)return window.PDFLib;
@@ -2039,7 +2039,7 @@ return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 
 // ═══ ENERGY COMPARE (ΡΑΑΕΥ) ═══
 function EnergyCompareSummary(){
-const[activeTab,setActiveTab]=useState(null);
+const [activeTab,setActiveTab]=useState(null);
 const tabs=[
   {key:"elec_home",label:"⚡ Ρεύμα Οικιακό",url:"https://energycost.gr/%CF%85%CF%80%CE%BF%CE%BB%CE%BF%CE%B3%CE%B9%CF%83%CE%BC%CF%8C%CF%82-%CF%84%CE%B9%CE%BC%CE%AE%CF%82-%CE%B2%CE%AC%CF%83%CE%B5%CE%B9-%CE%BA%CE%B1%CF%84%CE%B1%CE%BD%CE%AC%CE%BB%CF%89%CF%83%CE%B7%CF%82-2/",color:"#FF6F00"},
   {key:"elec_biz",label:"⚡ Ρεύμα Επαγγελματικό",url:"https://energycost.gr/%CE%BA%CE%B1%CF%84%CE%B1%CF%87%CF%89%CF%81%CE%B7%CE%BC%CE%AD%CE%BD%CE%B1-%CF%84%CE%B9%CE%BC%CE%BF%CE%BB%CF%8C%CE%B3%CE%B9%CE%B1-%CF%80%CF%81%CE%BF%CE%BC%CE%AE%CE%B8%CE%B5%CE%B9%CE%B1%CF%82-%CE%B7-2/",color:"#E65100"},
@@ -2062,14 +2062,14 @@ return(
 
 // ═══ ENERGY BILL ANALYZER ═══
 function EnergyAnalyzer(){
-const[billFile,setBillFile]=useState(null);
-const[billPreview,setBillPreview]=useState(null);
-const[invoicePref,setInvoicePref]=useState("all");
-const[analyzing,setAnalyzing]=useState(false);
-const[result,setResult]=useState(null);
-const[error,setError]=useState("");
-const[manualMode,setManualMode]=useState(false);
-const[manual,setManual]=useState({provider:"",consumption_kwh:"",price_per_kwh:"",monthly_fee:"",period_months:"4"});
+const [billFile,setBillFile]=useState(null);
+const [billPreview,setBillPreview]=useState(null);
+const [invoicePref,setInvoicePref]=useState("all");
+const [analyzing,setAnalyzing]=useState(false);
+const [result,setResult]=useState(null);
+const [error,setError]=useState("");
+const [manualMode,setManualMode]=useState(false);
+const [manual,setManual]=useState({provider:"",consumption_kwh:"",price_per_kwh:"",monthly_fee:"",period_months:"4"});
 
 const KNOWN_PLANS={
   blue:[
@@ -2287,9 +2287,9 @@ return(<div>
 }
 
 function OfferSlot({offer,idx,pv,canEdit,onUpload}){
-const[desc,setDesc]=useState(offer.desc||"");
-const[file,setFile]=useState(null);
-const[editing,setEditing]=useState(false);
+const [desc,setDesc]=useState(offer.desc||"");
+const [file,setFile]=useState(null);
+const [editing,setEditing]=useState(false);
 
 return(<div style={{background:"#FAFAFA",borderRadius:8,padding:12,border:"1px solid #F0F0F0"}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -2318,20 +2318,20 @@ return(<div style={{background:"#FAFAFA",borderRadius:8,padding:12,border:"1px s
 
 // ═══ FIELD MANAGEMENT ═══
 function FieldMgmt({pr}){
-const[fields,setFields]=useState([
+const [fields,setFields]=useState([
 {id:1,label:"Επώνυμο",type:"text",max:50,req:1,on:1},{id:2,label:"Όνομα",type:"text",max:50,req:1,on:1},
 {id:3,label:"ΑΦΜ",type:"number",max:9,req:1,on:1},{id:4,label:"ΑΔΤ",type:"text",max:10,req:1,on:1},
 {id:5,label:"Τηλέφωνο",type:"number",max:10,req:1,on:1},{id:6,label:"Κινητό",type:"number",max:10,req:1,on:1},
 {id:7,label:"Email",type:"email",max:100,req:0,on:1},{id:8,label:"ΤΚ",type:"number",max:5,req:1,on:1},
 {id:9,label:"Πόλη",type:"text",max:30,req:1,on:1},
 ]);
-const[show,setShow]=useState(false);const[nf,setNF]=useState({label:"",type:"text",max:50,req:0});
-const[ddLists,setDDL]=useState([
+const [show,setShow]=useState(false);const [nf,setNF]=useState({label:"",type:"text",max:50,req:0});
+const [ddLists,setDDL]=useState([
 {name:"Προγράμματα Vodafone",items:["Red 1","Red 2","Red 3","Unlimited","CU","CU Max"]},
 {name:"Couriers",items:["ACS","Speedex","ΕΛΤΑ Courier","DHL","Γενική Ταχ."]},
 {name:"Προγράμματα Cosmote",items:["Unlimited 3GB","Unlimited 7GB","Unlimited 15GB","Unlimited MAX"]},
 ]);
-const[editDD,setEditDD]=useState(null);const[ddItem,setDDItem]=useState("");const[ddName,setDDName]=useState("");
+const [editDD,setEditDD]=useState(null);const [ddItem,setDDItem]=useState("");const [ddName,setDDName]=useState("");
 
 return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:16}}>⚙️ Πεδία & Dropdown</h1>
@@ -2417,9 +2417,9 @@ return(<div>
 // ═══ ADMIN PANEL — All hooks at top level ═══
 // ═══ REPORTS PANEL ═══
 function ReportsPanel({reqs,users,pr,prov,PROVIDERS,ST,expReport,expXLSX}){
-const[rTab,setRTab]=useState("overview");const[rProv,setRProv]=useState("all");
-const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",svc:"",dateFrom:"",dateTo:"",partner:"",provider:"",agent:"",status:"",name:""});
-const[srchRes,setSrchRes]=useState(null);
+const [rTab,setRTab]=useState("overview");const [rProv,setRProv]=useState("all");
+const [srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",svc:"",dateFrom:"",dateTo:"",partner:"",provider:"",agent:"",status:"",name:""});
+const [srchRes,setSrchRes]=useState(null);
 const allReqs=rProv==="all"?reqs:reqs.filter(r=>r.prov===rProv);
 
 // Search function
@@ -2620,18 +2620,18 @@ return(
 
 function AdminPanel({users,setUsers,reqs,setReqs,afmDb,setAfmDb,cu,pr,sysPaused,setSysPaused,tixEnabled,setTixEnabled,tix,setTix}){
 // ALL hooks at top — never inside conditions
-const[sec,setSec]=useState("ov");
-const[showU,setShowU]=useState(false);
-const[nu,setNu]=useState({un:"",pw:"",name:"",email:"",role:"agent",partner:"",cc:1});
-const[showF,setShowF]=useState(false);
-const[nf,setNf]=useState({l:"",t:"text",mx:50,rq:0});
-const[flds,setFlds]=useState([{id:1,l:"Επώνυμο",t:"text",mx:50,rq:1,on:1},{id:2,l:"Όνομα",t:"text",mx:50,rq:1,on:1},{id:3,l:"ΑΦΜ",t:"number",mx:9,rq:1,on:1},{id:4,l:"ΑΔΤ",t:"text",mx:10,rq:1,on:1},{id:5,l:"Κινητό",t:"number",mx:10,rq:1,on:1},{id:6,l:"Email",t:"email",mx:100,rq:0,on:1},{id:7,l:"ΤΚ",t:"number",mx:5,rq:1,on:1},{id:8,l:"Πόλη",t:"text",mx:30,rq:1,on:1}]);
-const[dds,setDds]=useState([{n:"Vodafone Mobile",it:["Red 1","Red 2","Red 3","Unlimited","CU","CU Max"]},{n:"Cosmote Mobile",it:["Unlimited 3GB","Unlimited 7GB","Unlimited 15GB","Unlimited MAX"]},{n:"Nova Mobile",it:["Mobile 3GB","Mobile 7GB","Mobile Unlimited"]},{n:"Couriers",it:["ACS","Speedex","ΕΛΤΑ Courier","DHL","Γενική Ταχ."]},{n:"Υπηρεσίες",it:["Νέα Σύνδεση","Φορητότητα","Ανανέωση","Win Back"]}]);
-const[edDD,setEdDD]=useState(null);
-const[ddItem,setDdItem]=useState("");
-const[ddName,setDdName]=useState("");
-const[showC,setShowC]=useState(false);
-const[nc,setNc]=useState({afm:"",ln:"",fn:"",mob:"",city:""});
+const [sec,setSec]=useState("ov");
+const [showU,setShowU]=useState(false);
+const [nu,setNu]=useState({un:"",pw:"",name:"",email:"",role:"agent",partner:"",cc:1});
+const [showF,setShowF]=useState(false);
+const [nf,setNf]=useState({l:"",t:"text",mx:50,rq:0});
+const [flds,setFlds]=useState([{id:1,l:"Επώνυμο",t:"text",mx:50,rq:1,on:1},{id:2,l:"Όνομα",t:"text",mx:50,rq:1,on:1},{id:3,l:"ΑΦΜ",t:"number",mx:9,rq:1,on:1},{id:4,l:"ΑΔΤ",t:"text",mx:10,rq:1,on:1},{id:5,l:"Κινητό",t:"number",mx:10,rq:1,on:1},{id:6,l:"Email",t:"email",mx:100,rq:0,on:1},{id:7,l:"ΤΚ",t:"number",mx:5,rq:1,on:1},{id:8,l:"Πόλη",t:"text",mx:30,rq:1,on:1}]);
+const [dds,setDds]=useState([{n:"Vodafone Mobile",it:["Red 1","Red 2","Red 3","Unlimited","CU","CU Max"]},{n:"Cosmote Mobile",it:["Unlimited 3GB","Unlimited 7GB","Unlimited 15GB","Unlimited MAX"]},{n:"Nova Mobile",it:["Mobile 3GB","Mobile 7GB","Mobile Unlimited"]},{n:"Couriers",it:["ACS","Speedex","ΕΛΤΑ Courier","DHL","Γενική Ταχ."]},{n:"Υπηρεσίες",it:["Νέα Σύνδεση","Φορητότητα","Ανανέωση","Win Back"]}]);
+const [edDD,setEdDD]=useState(null);
+const [ddItem,setDdItem]=useState("");
+const [ddName,setDdName]=useState("");
+const [showC,setShowC]=useState(false);
+const [nc,setNc]=useState({afm:"",ln:"",fn:"",mob:"",city:""});
 
 
 // ─── OVERVIEW ───
