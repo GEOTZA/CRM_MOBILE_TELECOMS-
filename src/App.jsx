@@ -169,8 +169,8 @@ const ROLES = { admin:{l:"Admin",c:"#E91E63",i:"👑"}, director:{l:"Director",c
 
 const PERMS = {
   admin:{create:1,edit:1,del:1,viewAll:1,users:1,delUsers:1,pause:1,fields:1,exp:1,tickets:1,status:1,comment:1,adminPanel:1,reports:1},
-  director:{create:0,edit:1,del:1,viewAll:1,users:1,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,needsCode:1,reports:1},
-  supervisor:{create:0,edit:1,del:0,viewAll:1,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1},
+  director:{create:0,edit:1,del:1,viewAll:1,users:1,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,reports:1,needsCode:1},
+  supervisor:{create:0,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,ownTeam:1},
   backoffice:{create:0,edit:1,del:0,viewAll:1,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,reports:1},
   partner:{create:1,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownAgents:1},
   agent:{create:1,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownOnly:1},
@@ -280,7 +280,7 @@ const P=cu?PERMS[cu.role]:{};const pr=PROVIDERS[prov];const rl=cu?ROLES[cu.role]
 const addN=(uid,txt)=>setNotifs(p=>[{id:`N${Date.now()}`,uid,txt,ts:ts(),read:0},...p]);
 const myN=notifs.filter(n=>n.uid===cu?.id&&!n.read);
 
-const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);/* Hide drafts from everyone except the creator */r=r.filter(x=>x.status!=="draft"||x.agentId===cu.id);if(P.viewAll)return r;if(P.ownAgents)return r.filter(x=>x.partner===cu.partner);if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
+const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);r=r.filter(x=>x.status!=="draft"||x.agentId===cu.id);if(P.viewAll)return r;if(P.ownTeam){const myPartners=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myAgentIds=users.filter(u=>myPartners.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myAgentIds=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
 const vr=visReqs();const fr=vr.filter(r=>sf==="all"||r.status===sf);
 const stats={};Object.keys(ST).forEach(k=>{stats[k]=vr.filter(r=>r.status===k).length});stats.total=vr.length;
 
@@ -372,7 +372,16 @@ const loadFromSupa=async()=>{
 
 const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice")addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);if(req&&cu.role==="agent")users.filter(u=>u.role==="backoffice").forEach(u=>addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`));};
 
+// ═══ VALIDATION ═══
+const validateCustomer=(f,editId)=>{
+  if(f.afm&&f.afm.length>=9){const ex=reqs.find(r=>r.afm===f.afm&&r.id!==editId);if(ex&&!confirm(`⚠️ ΑΦΜ ${f.afm} υπάρχει ήδη (${ex.ln} ${ex.fn}, ${ex.id}).\nΑντικατάσταση στοιχείων;`))return false;}
+  if(f.adt&&f.adt.trim()){const ex=reqs.find(r=>r.adt===f.adt&&r.id!==editId);if(ex&&!confirm(`⚠️ ΑΔΤ ${f.adt} υπάρχει ήδη (${ex.ln} ${ex.fn}, ${ex.id}).\nΑντικατάσταση στοιχείων;`))return false;}
+  if(f.bd){const b=new Date(f.bd);if(!isNaN(b)){const t=new Date();let age=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))age--;if(age<18){alert(`❌ Ο πελάτης πρέπει να είναι 18+.\nΗλικία: ${age} ετών`);return false;}}}
+  return true;
+};
+
 const saveReq=async(f)=>{
+  if(!validateCustomer(f,f.id))return;
   const nextNum=reqs.reduce((mx,r)=>{const m=r.id?.match(/REQ-(\d+)/);return m?Math.max(mx,parseInt(m[1])):mx;},0)+1;
   const id=f.id||`REQ-${String(nextNum).padStart(5,"0")}`;
   const lns=f.lines||[];
@@ -620,7 +629,7 @@ return(<>
 {tab==="search"&&(()=>{
 const ss=v=>e=>setSrch(p=>({...p,[v]:e.target.value}));
 const clear=()=>setSrch({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
-const allR0=P.viewAll?reqs.filter(x=>x.prov===prov):P.ownAgents?reqs.filter(x=>x.prov===prov&&x.partner===cu.partner):reqs.filter(x=>x.prov===prov&&x.agentId===cu.id);
+const allR0=(()=>{let r=reqs.filter(x=>x.prov===prov);if(P.viewAll)return r;if(P.ownTeam){const myP=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myA=users.filter(u=>myP.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myA.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myA=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myA.includes(x.agentId)||x.agentId===cu.id);}return r.filter(x=>x.agentId===cu.id);})();
 const allR=allR0.filter(x=>x.status!=="draft"||x.agentId===cu.id);
 let res=allR;
 if(srch.afm)res=res.filter(r=>(r.afm||"").includes(srch.afm));
@@ -844,7 +853,7 @@ return(
 {/* Partner */}
 <div style={{padding:"14px 20px",background:"#F3E5F5",borderLeft:"4px solid #9C27B0",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-<FL l="Συνεργάτης" req><select value={form.partner} onChange={e=>s("partner",e.target.value)} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></FL>
+{/* Partner auto-filled from user */}
 </div></div>
 
 {/* ═══ ΓΡΑΜΜΕΣ ΠΡΟΪΟΝΤΩΝ ═══ */}
@@ -1327,8 +1336,9 @@ return(<div>
 {nu.role==="partner"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Supervisor</label><select value={nu.supervisor} onChange={e=>setNU(p=>({...p,supervisor:e.target.value}))} style={iS}><option value="">— Επιλέξτε —</option>{users.filter(u=>u.role==="supervisor").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>}
 {nu.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner *</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">— Επιλέξτε —</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
 {(nu.role!=="agent"&&nu.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner (προαιρ.)</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
+<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Πρόσβαση</label><select value={nu.accessGroup||"all"} onChange={e=>setNU(p=>({...p,accessGroup:e.target.value}))} style={iS}><option value="all">📊 Όλα</option><option value="telecom">📡 Telecom</option><option value="energy">⚡ Ρεύμα</option></select></div>
 </div>
-<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){const name=`${nu.fname} ${nu.lname}`;const newUser={un:nu.un,pw:nu.pw,name,email:nu.email,mobile:nu.mobile||"",userCode:nu.userCode||"",role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",active:1,paused:0,tixOff:0,id:`U${String(users.length+10).padStart(3,"0")}`};setUsers(p=>[...p,newUser]);setNU({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:""});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
+<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){const name=`${nu.fname} ${nu.lname}`;const hashed=await hashPW(nu.pw);const newUser={un:nu.un,pw:hashed,name,email:nu.email,mobile:nu.mobile||"",userCode:nu.userCode||"",role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",accessGroup:nu.accessGroup||"all",active:1,paused:0,tixOff:0,cc:1,id:`U${String(users.length+10).padStart(3,"0")}`,mustChangePW:1};setUsers(p=>[...p,newUser]);if(USE_SUPA){try{await fetch(`${SUPA_URL}/rest/v1/users`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":"application/json"},body:JSON.stringify({id:newUser.id,username:nu.un,password:hashed,name,email:nu.email,role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",mobile:nu.mobile||"",user_code:nu.userCode||"",can_create:true,access_group:nu.accessGroup||"all",active:true,must_change_pw:true})});}catch(e){console.error("User create error:",e);}}setNU({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:"",accessGroup:"all"});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
 </div>}
 
 {/* Delete modal for Director */}
@@ -1472,7 +1482,7 @@ const EnergyForm=({ed,onCancel})=>{
     const base={id:"",ln:"",fn:"",fat:"",bd:"",adt:"",ph:"",mob:"",em:"",afm:"",doy:"",tk:"",addr:"",city:"",
       partner:cu.partner||"",agentId:cu.id,agentName:cu.name,status:"draft",notes:"",created:"",prov:"energy",
       energyLines:[{id:Date.now(),eProv:"dei",prog:"",progCustom:"",price:"",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:"",fromProv:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:""}],
-      startDate:"",duration:"24",endDate:"",creditDate:"",docs:[],sig:null};
+      startDate:"",duration:"24",endDate:"",creditDate:"",billAddr:"",billCity:"",billTk:"",showBillAddr:false,docs:[],sig:null};
     return ed?{...base,...ed,energyLines:ed.lines||ed.energyLines||base.energyLines}:base;
   });
   const s=(k,v)=>setForm(p=>({...p,[k]:v}));
@@ -1486,6 +1496,7 @@ const EnergyForm=({ed,onCancel})=>{
 
   const saveEnergy=async(asStatus)=>{
     if(!form.ln||!form.afm){alert("Συμπληρώστε Επώνυμο και ΑΦΜ");return;}
+    if(!validateCustomer(form,form.id))return;
     const nextNum=reqs.reduce((mx,r)=>{const m=r.id?.match(/REQ-(\d+)/);return m?Math.max(mx,parseInt(m[1])):mx;},0)+1;
     const id=form.id||`REQ-${String(nextNum).padStart(5,"0")}`;
     const pendingDocs=(form.docs||[]).filter(d=>d.file&&d.type).map(d=>({file:d.file,type:d.type,name:d.name||d.file.name}));
@@ -1518,7 +1529,22 @@ const EnergyForm=({ed,onCancel})=>{
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
   {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"date"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο"],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ"],["addr","Διεύθυνση",1],["city","Πόλη",1],["tk","ΤΚ",1]].map(([f,l,r,t])=>
   <FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
-  </div></div>
+  </div>
+  {/* Billing Address */}
+  <div style={{marginTop:8}}>
+  <button onClick={()=>s("showBillAddr",!form.showBillAddr)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #FF6F00",background:form.showBillAddr?"#FFF3E0":"white",color:"#E65100",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>{form.showBillAddr?"✖ Κλείσιμο":"📬 Διαφορετική διεύθυνση λογαριασμών"}</button>
+  {form.showBillAddr&&<div style={{marginTop:6,padding:10,background:"#FFF8E1",borderRadius:8,border:"1px solid #FFB74D"}}>
+  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+  <span style={{fontWeight:700,fontSize:"0.78rem",color:"#E65100"}}>📬 Διεύθυνση Λογαριασμών</span>
+  <button onClick={()=>{s("billAddr",form.addr);s("billCity",form.city);s("billTk",form.tk);}} style={{padding:"3px 10px",borderRadius:4,border:"1px solid #E65100",background:"white",color:"#E65100",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>📋 Από κύρια</button>
+  </div>
+  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:6}}>
+  <FL l="Διεύθυνση"><input value={form.billAddr||""} onChange={e=>s("billAddr",e.target.value)} style={iS}/></FL>
+  <FL l="Πόλη"><input value={form.billCity||""} onChange={e=>s("billCity",e.target.value)} style={iS}/></FL>
+  <FL l="ΤΚ"><input value={form.billTk||""} onChange={e=>s("billTk",e.target.value.replace(/[^\d]/g,"").slice(0,5))} style={iS}/></FL>
+  </div></div>}
+  </div>
+  </div>
 
   {/* Energy Lines */}
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
