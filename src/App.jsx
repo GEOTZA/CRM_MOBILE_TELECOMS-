@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-
+import EnergyCompare from "./energy/energyCompare"
 
 /* ═══ SHEETJS XLSX EXPORT ═══ */
 const loadXLSX=()=>new Promise((res,rej)=>{
@@ -515,7 +515,7 @@ return(
 <div style={{display:"flex",minHeight:"calc(100vh - 90px)"}}>
 
 {/* SIDEBAR */}
-<div style={{width:sbOpen?220:50,minWidth:sbOpen?220:50,background:"#1A1A2E",transition:"all 0.3s",overflow:"hidden",position:"sticky",top:90,height:"calc(100vh - 90px)"}}>
+<div style={{width:sbOpen?220:50,minWidth:sbOpen?220:50,background:"#1A1A2E",transition:"all 0.3s",overflowY:"auto",overflowX:"hidden",position:"sticky",top:90,height:"calc(100vh - 90px)"}}>
 <div style={{padding:"8px 0"}}>
 <button onClick={()=>setSbOpen(!sbOpen)} style={{width:"100%",padding:"10px 14px",background:"none",border:"none",color:"rgba(255,255,255,0.6)",cursor:"pointer",textAlign:sbOpen?"right":"center",fontSize:"0.9rem"}}>{sbOpen?"◀":"▶"}</button>
 
@@ -846,7 +846,7 @@ return(
 <div style={{padding:"14px 20px",borderBottom:"1px solid #F0F0F0"}}>
 <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:10}}>👤 Πελάτης</div>
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:8}}>
-{[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"date"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο",1],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ",1],["tk","ΤΚ",1],["addr","Διεύθυνση",1],["city","Πόλη",1]].map(([f,l,r,t])=>
+{[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"text"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο",1],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ",1],["tk","ΤΚ",1],["addr","Διεύθυνση",1],["city","Πόλη",1]].map(([f,l,r,t])=>
 <FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
 </div></div>
 
@@ -1496,7 +1496,10 @@ const EnergyForm=({ed,onCancel})=>{
 
   const saveEnergy=async(asStatus)=>{
     if(!form.ln||!form.afm){alert("Συμπληρώστε Επώνυμο και ΑΦΜ");return;}
-    if(!validateCustomer(form,form.id))return;
+    // Inline validation (validateCustomer not accessible from outside App)
+    if(form.afm&&form.afm.length>=9){const ex=reqs.find(r=>r.afm===form.afm&&r.id!==form.id);if(ex&&!confirm(`⚠️ ΑΦΜ ${form.afm} υπάρχει ήδη (${ex.ln} ${ex.fn}, ${ex.id}).\nΑντικατάσταση;`))return;}
+    if(form.adt&&form.adt.trim()){const ex=reqs.find(r=>r.adt===form.adt&&r.id!==form.id);if(ex&&!confirm(`⚠️ ΑΔΤ ${form.adt} υπάρχει ήδη (${ex.ln} ${ex.fn}, ${ex.id}).\nΑντικατάσταση;`))return;}
+    if(form.bd){const b=new Date(form.bd);if(!isNaN(b)){const t=new Date();let age=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))age--;if(age<18){alert(`❌ Πρέπει 18+. Ηλικία: ${age}`);return;}}}
     const nextNum=reqs.reduce((mx,r)=>{const m=r.id?.match(/REQ-(\d+)/);return m?Math.max(mx,parseInt(m[1])):mx;},0)+1;
     const id=form.id||`REQ-${String(nextNum).padStart(5,"0")}`;
     const pendingDocs=(form.docs||[]).filter(d=>d.file&&d.type).map(d=>({file:d.file,type:d.type,name:d.name||d.file.name}));
@@ -1527,7 +1530,7 @@ const EnergyForm=({ed,onCancel})=>{
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>👤 Πελάτης</div>
   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:8}}>
-  {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"date"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο"],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ"],["addr","Διεύθυνση",1],["city","Πόλη",1],["tk","ΤΚ",1]].map(([f,l,r,t])=>
+  {[["ln","Επώνυμο",1],["fn","Όνομα",1],["fat","Πατρώνυμο"],["bd","Γέννηση",1,"text"],["adt","ΑΔΤ",1],["ph","Τηλέφωνο"],["mob","Κινητό",1],["em","Email",0,"email"],["afm","ΑΦΜ",1],["doy","ΔΟΥ"],["addr","Διεύθυνση",1],["city","Πόλη",1],["tk","ΤΚ",1]].map(([f,l,r,t])=>
   <FL key={f} l={l} req={!!r}><input type={t||"text"} value={form[f]||""} onChange={e=>s(f,e.target.value)} style={iS}/></FL>)}
   </div>
   {/* Billing Address */}
@@ -1630,14 +1633,18 @@ return(<div>
 
 {/* DETAIL VIEW */}
 {eVM==="detail"&&eSel&&(()=>{const r=eSel;const st=ST[r.status]||{};const lines=r.lines||r.energyLines||[];const docs=r.documents?typeof r.documents==="string"?JSON.parse(r.documents):r.documents:[];
+const expEPDF=()=>{const el=lines[0]||{};const ep=ENERGY_PROVIDERS[el.eProv]||{name:"—"};const f=(l,v)=>`<div style="margin-bottom:3px"><span style="font-size:0.65rem;color:#999;text-transform:uppercase;font-weight:600;display:block">${l}</span><span style="font-size:0.84rem;font-weight:500">${v||"—"}</span></div>`;const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${r.id}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;padding:20px;max-width:800px;margin:auto;color:#222}.h{background:linear-gradient(135deg,#FF6F00,#F4511E);color:#fff;padding:14px;border-radius:6px;margin-bottom:14px;display:flex;justify-content:space-between}.h h1{font-size:1.1rem}.sc{border:1px solid #E0E0E0;border-radius:5px;padding:12px;margin-bottom:10px}.st{font-weight:700;font-size:0.88rem;margin-bottom:8px;border-bottom:2px solid #FF6F00;padding-bottom:3px}.g{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}.sig{text-align:center;padding:10px}.sig img{max-width:260px}@media print{@page{margin:1cm}}</style></head><body><div class="h"><h1>⚡ ${r.id} — ${ep.name}</h1><span style="background:${st.bg||"#F5F5F5"};color:${st.c||"#333"};padding:3px 8px;border-radius:4px;font-size:0.76rem;font-weight:700">${st.i} ${st.l}</span></div><div class="sc"><div class="st">👤 Πελάτης</div><div class="g">${[["Επώνυμο",r.ln],["Όνομα",r.fn],["ΑΦΜ",r.afm],["ΑΔΤ",r.adt],["Κινητό",r.mob],["Διεύθυνση",r.addr],["Πόλη",r.city],["ΤΚ",r.tk],["Email",r.em]].map(([a,b])=>f(a,b)).join("")}</div></div>${lines.map((el2,i)=>`<div class="sc"><div class="st">⚡ Παροχή ${i+1} — ${ENERGY_PROVIDERS[el2.eProv]?.name||""}</div><div class="g">${[["Πρόγραμμα",el2.progCustom||el2.prog],["Τιμή","€"+(el2.price||"0")],["Τιμολόγιο",el2.eInvoiceColor],["Τύπος",el2.eType],["Πληρωμή",el2.ePayment],["Ενέργεια",el2.eAction],["Αρ.Παροχής",el2.eParochi],["ΗΚΑΣΠ",el2.eHkasp],["Εγκατάσταση",(el2.instAddr||"")+" "+(el2.instCity||"")]].map(([a,b])=>f(a,b)).join("")}</div></div>`).join("")}<div class="sc"><div class="st">✍️ Υπογραφή</div><div class="sig">${r.sig?`<img src="${r.sig}"/>`:"—"}</div></div><script>window.onload=()=>window.print()</script></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();};
+const expEA5=()=>{const el=lines[0]||{};const ep=ENERGY_PROVIDERS[el.eProv]||{name:"—"};const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>A5 ${r.id}</title><style>*{margin:0;padding:0;box-sizing:border-box}@page{size:A5;margin:10mm}body{font-family:Arial,sans-serif;width:148mm;padding:10mm;margin:auto}.h{background:linear-gradient(135deg,#FF6F00,#F4511E);color:#fff;padding:8px 12px;border-radius:5px;margin-bottom:10px;display:flex;justify-content:space-between;font-weight:800;font-size:0.9rem}.b{border:1.5px solid #333;border-radius:4px;padding:8px;margin-bottom:7px}.bt{font-weight:700;font-size:0.78rem;margin-bottom:5px;color:#FF6F00}.r{display:flex;gap:6px;margin-bottom:2px;font-size:0.8rem}.lb{color:#666;font-weight:600;min-width:70px}.big{font-size:0.95rem;font-weight:700}</style></head><body><div class="h"><span>⚡ ${r.id} — ${ep.name}</span></div><div class="b"><div class="bt">👤 Πελάτης</div><div class="r"><span class="lb">Ονομ:</span><span class="big">${r.ln} ${r.fn}</span></div><div class="r"><span class="lb">Κιν:</span><span class="big">${r.mob||""}</span></div><div class="r"><span class="lb">ΑΦΜ:</span><span>${r.afm||""}</span></div></div><div class="b"><div class="bt">⚡ Παροχή</div><div class="r"><span class="lb">Πάροχος:</span><span class="big">${ep.name}</span></div><div class="r"><span class="lb">Πρόγρ:</span><span>${el.progCustom||el.prog||""}</span></div><div class="r"><span class="lb">Αρ.Παρ:</span><span>${el.eParochi||""}</span></div></div><div class="b"><div class="bt">📍 Εγκατάσταση</div><div class="r"><span class="lb">Διεύθ:</span><span class="big">${el.instAddr||""}</span></div><div class="r"><span class="lb">Πόλη:</span><span>${el.instCity||""}</span></div><div class="r"><span class="lb">ΤΚ:</span><span class="big">${el.instTk||""}</span></div></div><script>window.onload=()=>window.print()</script></body></html>`;const w=window.open("","_blank");w.document.write(html);w.document.close();};
 return(<div style={{maxWidth:900,margin:"0 auto"}}>
 <div style={{background:"linear-gradient(135deg,#FF6F00,#F4511E)",borderRadius:12,padding:16,color:"white",marginBottom:14}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
 <div><h2 style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.2rem"}}>⚡ {r.id}</h2><div style={{fontSize:"0.82rem",opacity:0.9}}>{r.ln} {r.fn} — {r.afm}</div></div>
 <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
 <span style={{padding:"3px 10px",borderRadius:6,background:st.bg,color:st.c,fontWeight:700,fontSize:"0.76rem"}}>{st.i} {st.l}</span>
-{P.edit&&<button onClick={()=>setEVM("edit")} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>✏️ Επεξεργασία</button>}
-{r.status==="draft"&&r.agentId===cu.id&&<button onClick={()=>{setReqs(p=>p.map(x=>x.id===r.id?{...x,status:"sent"}:x));setESel(p=>({...p,status:"sent"}));}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#1565C0",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📤 Αποστολή</button>}
+{P.edit&&<button onClick={()=>setEVM("edit")} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>✏️</button>}
+<button onClick={expEPDF} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>PDF</button>
+<button onClick={expEA5} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>A5</button>
+{r.status==="draft"&&r.agentId===cu.id&&<button onClick={()=>{setReqs(p=>p.map(x=>x.id===r.id?{...x,status:"sent"}:x));setESel(p=>({...p,status:"sent"}));if(USE_SUPA)supa.from("requests").update({status:"sent"}).eq("id",r.id);}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"#1565C0",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📤 Αποστολή</button>}
 <button onClick={()=>{setEVM("list");setESel(null);}} style={{padding:"5px 12px",borderRadius:6,border:"none",background:"rgba(255,255,255,0.2)",color:"white",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>← Πίσω</button>
 </div></div></div>
 
@@ -1758,12 +1765,20 @@ return(<div style={{maxWidth:900,margin:"0 auto"}}>
 {/* OFFERS */}
 {eTab==="offers"&&<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🏷️ Προσφορές Ρεύματος</h1>
-<p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Προσφορές παρόχων ρεύματος — σύντομα θα μπορείτε να ανεβάζετε PDF προσφορών ανά πάροχο</p>
-{Object.entries(ENERGY_PROVIDERS).slice(0,8).map(([k,ep])=>(
+{(()=>{const canUp=["admin","director","backoffice"].includes(cu.role);
+return Object.entries(ENERGY_PROVIDERS).slice(0,10).map(([k,ep])=>{
+const offerKey=`energy_offer_${k}`;
+const existing=reqs.find(r=>r.id===offerKey);
+return(
 <div key={k} style={{background:"white",borderRadius:10,padding:14,marginBottom:8,border:"1px solid #E0E0E0",borderLeft:`4px solid ${ep.color}`}}>
-<div style={{fontWeight:700,fontSize:"0.88rem",color:ep.color}}>{ep.name}</div>
-<div style={{fontSize:"0.76rem",color:"#888",marginTop:4}}>Προγράμματα: {ep.programs.slice(0,4).join(", ")}{ep.programs.length>4?"...":""}</div>
-</div>))}
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+<div><div style={{fontWeight:700,fontSize:"0.88rem",color:ep.color}}>{ep.name}</div>
+<div style={{fontSize:"0.72rem",color:"#888",marginTop:2}}>{ep.programs.slice(0,3).join(", ")}{ep.programs.length>3?"...":""}</div></div>
+{canUp&&<div style={{display:"flex",gap:4}}>
+<input type="file" accept=".pdf,image/*" id={`eoff_${k}`} style={{display:"none"}} onChange={async e=>{const f=e.target.files[0];if(!f||!USE_SUPA)return;try{const path=`energy_offers/${k}/${Date.now()}_${f.name}`;await fetch(`${SUPA_URL}/storage/v1/object/documents/${path}`,{method:"POST",headers:{apikey:SUPA_KEY,Authorization:`Bearer ${SUPA_KEY}`,"Content-Type":f.type,"x-upsert":"true"},body:f});alert(`✅ Ανέβηκε: ${f.name}`);}catch(err){alert("Σφάλμα: "+err.message);}}}/>
+<button onClick={()=>document.getElementById(`eoff_${k}`).click()} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+ep.color,background:"white",color:ep.color,cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>📤 Upload</button>
+</div>}
+</div></div>);})})()}
 </div>}
 
 </div>);
@@ -1910,7 +1925,7 @@ function ToolsEnergyPanel(){
 return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.6rem",fontWeight:900,marginBottom:20}}>⚡ Εργαλεία Ρεύματος</h1>
 <EnergyAnalyzer/>
-<EnergyCompare/>
+<EnergyCompareSummary/>
 </div>);
 }
 
