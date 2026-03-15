@@ -300,39 +300,56 @@ const sendEmail=async(to,subject,body)=>{
     });
     if(res.ok)console.log("📧 Email sent to:",to);
     else console.error("📧 Email failed:",await res.text());
-  }catch(e){console.error("📧 Email error:",e);}
+  }catch(e){console.error("Email error:",e);}
 };
 
-// Email notification triggers
+// === SMS/VIBER via Apifon ===
+const sendSMS=async(to,text,type="sms")=>{
+  if(!to)return;
+  try{
+    const res=await fetch("/.netlify/functions/send-sms",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({type,to,text})
+    });
+    if(res.ok)console.log("SMS sent to:",to);
+    else console.error("SMS failed:",await res.text());
+  }catch(e){console.error("SMS error:",e);}
+};
+
+// === Notification triggers (Email + SMS) ===
 const notifyNewRequest=(reqId,agentName,provName,customerName)=>{
   const boUsers=users.filter(u=>u.role==="backoffice"||u.role==="director");
   boUsers.forEach(u=>{
     if(u.email)sendEmail(u.email,`Νέα αίτηση ${reqId}`,
-      `<h2>📨 Νέα Αίτηση</h2>
+      `<h2>Νέα Αίτηση</h2>
        <p><strong>ID:</strong> ${reqId}</p>
        <p><strong>Πελάτης:</strong> ${customerName}</p>
        <p><strong>Πάροχος:</strong> ${provName}</p>
        <p><strong>Agent:</strong> ${agentName}</p>
-       <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Άνοιγμα CRM</a></p>`);
+       <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Ανοιγμα CRM</a></p>`);
+    if(u.mobile)sendSMS(u.mobile,`CRM: Νέα αίτηση ${reqId} - ${customerName} - ${provName} - Agent: ${agentName}`);
   });
 };
 
-const notifyStatusChange=(reqId,newStatus,agentEmail,agentName)=>{
-  const st=ST[newStatus]||{l:newStatus,i:"📋"};
-  if(agentEmail)sendEmail(agentEmail,`Αλλαγή κατάστασης ${reqId} → ${st.l}`,
-    `<h2>${st.i} Αλλαγή Κατάστασης</h2>
-     <p><strong>Αίτηση:</strong> ${reqId}</p>
-     <p><strong>Νέα κατάσταση:</strong> ${st.i} ${st.l}</p>
-     <p><strong>Από:</strong> ${cu?.name||"Σύστημα"}</p>
-     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες την αίτηση</a></p>`);
+const notifyStatusChange=(reqId,newStatus,agentEmail,agentName,agentMobile)=>{
+  const st=ST[newStatus]||{l:newStatus,i:""};
+  if(agentEmail)sendEmail(agentEmail,`Αλλαγη κατ. ${reqId} - ${st.l}`,
+    `<h2>Αλλαγη Καταστασης</h2>
+     <p><strong>Αιτηση:</strong> ${reqId}</p>
+     <p><strong>Νεα κατασταση:</strong> ${st.l}</p>
+     <p><strong>Απο:</strong> ${cu?.name||"Συστημα"}</p>
+     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες την αιτηση</a></p>`);
+  if(agentMobile)sendSMS(agentMobile,`CRM: ${reqId} -> ${st.l} (απο ${cu?.name||"Συστημα"})`);
 };
 
-const notifyComment=(reqId,commenterName,agentEmail)=>{
-  if(agentEmail)sendEmail(agentEmail,`Νέο σχόλιο στο ${reqId}`,
-    `<h2>💬 Νέο Σχόλιο</h2>
-     <p><strong>Αίτηση:</strong> ${reqId}</p>
-     <p><strong>Από:</strong> ${commenterName}</p>
-     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#2196F3;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες το σχόλιο</a></p>`);
+const notifyComment=(reqId,commenterName,agentEmail,agentMobile)=>{
+  if(agentEmail)sendEmail(agentEmail,`Σχολιο στο ${reqId}`,
+    `<h2>Νεο Σχολιο</h2>
+     <p><strong>Αιτηση:</strong> ${reqId}</p>
+     <p><strong>Απο:</strong> ${commenterName}</p>
+     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#2196F3;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες το σχολιο</a></p>`);
+  if(agentMobile)sendSMS(agentMobile,`CRM: Σχολιο στο ${reqId} απο ${commenterName}`);
 };
 const myN=notifs.filter(n=>n.uid===cu?.id&&!n.read);
 
@@ -426,7 +443,7 @@ const loadFromSupa=async()=>{
   }catch(e){console.error("Load error:",e);}
 }
 
-const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice"){addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);const ag=users.find(u=>u.id===req.agentId);if(ag?.email)notifyComment(rid,cu.name,ag.email);}if(req&&cu.role==="agent"){users.filter(u=>u.role==="backoffice").forEach(u=>{addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`);if(u.email)notifyComment(rid,cu.name,u.email);});}};
+const addComment=(rid,txt)=>{const c={id:`C${Date.now()}`,uid:cu.id,uname:cu.name,role:cu.role,text:txt,ts:ts()};setReqs(p=>p.map(r=>r.id===rid?{...r,comments:[...r.comments,c]}:r));const req=reqs.find(r=>r.id===rid);if(req&&cu.role==="backoffice"){addN(req.agentId,`💬 Σχόλιο ${rid} από BackOffice`);const ag=users.find(u=>u.id===req.agentId);if(ag)notifyComment(rid,cu.name,ag.email,ag.mobile);}if(req&&cu.role==="agent"){users.filter(u=>u.role==="backoffice").forEach(u=>{addN(u.id,`💬 Σχόλιο ${rid} από ${cu.name}`);notifyComment(rid,cu.name,u.email,u.mobile);});}};
 
 // === VALIDATION ===
 const validateCustomer=(f,editId)=>{
@@ -679,7 +696,7 @@ return(<>
 {tab==="dash"&&(vm==="form"||vm==="edit")&&<ReqForm pr={pr} prov={prov} onSave={saveReq} onCancel={()=>setVM("list")} ed={vm==="edit"?sel:null} db={afmDb} P={P} cu={cu}/>}
 
 {/* DETAIL */}
-{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);const agentU=users.find(u=>u.id===sel.agentId);if(agentU?.email)notifyStatusChange(sel.id,s,agentU.email,agentU.name);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
+{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);const agentU=users.find(u=>u.id===sel.agentId);if(agentU)notifyStatusChange(sel.id,s,agentU.email,agentU.name,agentU.mobile);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
 {/* === SEARCH === */}
