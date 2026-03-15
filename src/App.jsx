@@ -2054,7 +2054,7 @@ return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 </div>);
 }
 
-// === ENERGY COMPARE (ΡΑΑΕΥ) ===
+// === ENERGY COMPARE (_____) ===
 function EnergyCompareSummary(){
 const [activeTab,setActiveTab]=useState(null);
 const tabs=[
@@ -2462,7 +2462,7 @@ const uniqueAgents=[...new Set(reqs.map(r=>r.agentName).filter(Boolean))].sort()
 const uniquePartners=[...new Set(reqs.map(r=>r.partner).filter(Boolean))].sort();
 const activeReqs=allReqs.filter(r=>r.status==="active"||r.status==="credited");
 
-// ─── AGGREGATIONS ───
+// ___ AGGREGATIONS ___
 const byProvider=Object.entries(PROVIDERS).map(([k,p])=>{
   const pr=reqs.filter(r=>r.prov===k);const act=pr.filter(r=>r.status==="active"||r.status==="credited");
   const rev=act.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
@@ -2651,7 +2651,7 @@ const [showC,setShowC]=useState(false);
 const [nc,setNc]=useState({afm:"",ln:"",fn:"",mob:"",city:""});
 
 
-// ─── OVERVIEW ───
+// ___ OVERVIEW ___
 if(sec==="ov")return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"2rem",fontWeight:900,marginBottom:4}}>👑 Admin Panel</h1>
 <p style={{color:"#888",fontSize:"0.85rem",marginBottom:20}}>Πλήρης διαχείριση χωρίς κώδικα</p>
@@ -2667,7 +2667,7 @@ if(sec==="ov")return(<div>
 <AdmCd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
 </div></div>);
 
-// ─── USERS ───
+// ___ USERS ___
 if(sec==="us")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>👥 Χρήστες & Partners</h1>
 <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
@@ -2693,7 +2693,7 @@ if(sec==="us")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px"}}><button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} style={{padding:"3px 10px",borderRadius:5,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>{u.paused?"▶ Ενεργοποίηση":"⏸ Παύση"}</button></td>
 <td style={{padding:"7px 10px"}}>{u.role!=="admin"&&<button onClick={()=>{if(confirm("Διαγραφή "+u.name+"?"))setUsers(p=>p.filter(x=>x.id!==u.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button>}</td></tr>)}</tbody></table></div></div>);
 
-// ─── FIELDS ───
+// ___ FIELDS ___
 if(sec==="fl")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:6}}>📋 Πεδία Φόρμας</h1>
 <p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Προσθήκη/αφαίρεση πεδίων, τύπος, max χαρακτήρες</p>
@@ -2712,7 +2712,7 @@ if(sec==="fl")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <button onClick={()=>setFlds(p=>p.map(x=>x.id===f.id?{...x,on:x.on?0:1}:x))} style={{padding:"2px 6px",borderRadius:3,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.66rem"}}>{f.on?"🔒":"🔓"}</button>
 <button onClick={()=>setFlds(p=>p.filter(x=>x.id!==f.id))} style={{padding:"2px 6px",borderRadius:3,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.66rem"}}>🗑</button></div></td></tr>)}</tbody></table></div></div>);
 
-// ─── DROPDOWNS ───
+// ___ DROPDOWNS ___
 if(sec==="dd")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:6}}>📝 Dropdown Lists</h1>
 <p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Αλλαγή χωρίς κώδικα!</p>
@@ -2724,7 +2724,7 @@ if(sec==="dd")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 </div>)}
 <div style={{display:"flex",gap:6,marginTop:10}}><input placeholder="Νέα λίστα..." value={ddName} onChange={e=>setDdName(e.target.value)} style={{...iS,flex:1}}/><button onClick={()=>{if(ddName.trim()){setDds(p=>[...p,{n:ddName.trim(),it:[]}]);setDdName("");}}} style={B(pr.color,"white",{})}>➕</button></div></div>);
 
-// ─── CUSTOMERS ───
+// ___ CUSTOMERS ___
 if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>👤 Πελάτες -- ΑΦΜ</h1>
 <button onClick={()=>setShowC(!showC)} style={B(pr.grad,"white",{marginBottom:12})}>➕ Νέος</button>
@@ -2736,7 +2736,7 @@ if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 {afmDb.map(c=><tr key={c.afm} style={{borderBottom:"1px solid #F5F5F5"}}><td style={{padding:"7px 10px",fontWeight:600}}>{c.afm}</td><td style={{padding:"7px 10px"}}>{c.ln} {c.fn}</td><td style={{padding:"7px 10px"}}>{c.mob}</td><td style={{padding:"7px 10px"}}>{c.city||c.ct}</td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή;"))setAfmDb(p=>p.filter(x=>x.afm!==c.afm));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div>);
 
-// ─── REQUESTS ───
+// ___ REQUESTS ___
 if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.length})</h1>
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ID","Πελάτης","ΑΦΜ","Πρόγρ.","Status","Agent",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
@@ -2749,7 +2749,7 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.agentName}</td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
 
-// ─── ENERGY REQUESTS ───
+// ___ ENERGY REQUESTS ___
 if(sec==="erq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>⚡ Αιτήσεις Ρεύματος (Admin)</h1>
 {(()=>{const eReqs=reqs.filter(r=>r.prov==="energy");
@@ -2775,7 +2775,7 @@ return(<>
 </>);})()}
 </div>);
 
-// ─── SYSTEM ───
+// ___ SYSTEM ___
 if(sec==="tk")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🎫 Διαχείριση Αιτημάτων</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
@@ -2815,7 +2815,7 @@ if(sec==="sy")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <div><div style={{fontWeight:700,fontSize:"0.82rem"}}>{ROLES[u.role]?.i} {u.name} <span style={{fontSize:"0.68rem",padding:"2px 6px",borderRadius:4,background:u.paused?"#FFE6E6":"#E6F9EE",color:u.paused?"#E60000":"#00A651",fontWeight:700}}>{u.paused?"🔴 ΣΕ ΠΑΥΣΗ":"🟢 ΕΝΕΡΓΟΣ"}</span></div><div style={{fontSize:"0.72rem",color:"#888"}}>{ROLES[u.role]?.l}</div></div>
 <button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} style={B(u.paused?"#4CAF50":"#FF9800","white",{fontSize:"0.75rem",padding:"5px 12px"})}>{u.paused?"▶ Ενεργοποίηση":"⏸ Παύση"}</button></div>)}</div></div></div>);
 
-// ─── SUPABASE ───
+// ___ SUPABASE ___
 if(sec==="db")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🗃️ Supabase</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
