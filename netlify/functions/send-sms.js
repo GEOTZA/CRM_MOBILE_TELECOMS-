@@ -48,7 +48,7 @@ exports.handler = async function(event, context) {
         sms_failover: {
           text: text
         },
-        sender: sender || "CRMElect"
+        sender: sender || "electrigon1"
       };
       const bodyStr = JSON.stringify(bodyObj);
       const signature = getApifonSignature(SECRET, "POST", uri, bodyStr, dateStr);
