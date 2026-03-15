@@ -302,7 +302,6 @@ const sendEmail=async(to,subject,body)=>{
     else console.error("📧 Email failed:",await res.text());
   }catch(e){console.error("📧 Email error:",e);}
 };
-const sendSMS=async(to,text,type="sms")=>{if(!to)return;try{await fetch("/.netlify/functions/send-sms",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,to,text})});}catch(e){console.error(e);}};
 
 // Email notification triggers
 const notifyNewRequest=(reqId,agentName,provName,customerName)=>{
