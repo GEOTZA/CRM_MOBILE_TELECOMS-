@@ -17,7 +17,7 @@ exports.handler = async function(event, context) {
   const SECRET = process.env.APIFON_SECRET;
   
   if (!TOKEN || !SECRET) {
-    console.error("APIFON_TOKEN or APIFON_SECRET not set");
+    console.error("APIFON credentials missing - TOKEN:", !!TOKEN, "SECRET:", !!SECRET);
     return { statusCode: 500, body: JSON.stringify({ error: "Apifon credentials not configured" }) };
   }
 
@@ -33,68 +33,65 @@ exports.handler = async function(event, context) {
     if (phone.startsWith('69')) phone = '30' + phone;
     if (!phone.startsWith('30')) phone = '30' + phone;
 
+    console.log("Sending SMS to:", phone, "text:", text.substring(0, 50));
+
     const d = new Date();
     const dateStr = d.toUTCString();
     
-    if (type === "viber") {
-      // IM (Viber) message
-      const uri = "/services/api/v1/im/send";
-      const bodyObj = {
-        subscribers: [{ number: phone }],
-        message: {
-          text: text,
-          dc: "0"
-        },
-        sms_failover: {
-          text: text
-        },
-        sender: sender || "electrigon1"
-      };
-      const bodyStr = JSON.stringify(bodyObj);
-      const signature = getApifonSignature(SECRET, "POST", uri, bodyStr, dateStr);
-      
-      const res = await fetch("https://ars.apifon.com" + uri, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "ApifonWS " + TOKEN + ":" + signature,
-          "X-ApifonWS-Date": dateStr
-        },
-        body: bodyStr
-      });
-      
-      const data = await res.json();
-      console.log("Apifon Viber response:", res.status, JSON.stringify(data));
-      return { statusCode: res.ok ? 200 : res.status, body: JSON.stringify(data) };
-      
-    } else {
-      // SMS message
-      const uri = "/services/api/v1/sms/send";
-      const bodyObj = {
-        subscribers: [{ number: phone }],
-        message: {
-          text: text,
-          dc: "0"
-        },
-        sender: sender || "CRMElect"
-      };
-      const bodyStr = JSON.stringify(bodyObj);
-      const signature = getApifonSignature(SECRET, "POST", uri, bodyStr, dateStr);
-      
-      const res = await fetch("https://ars.apifon.com" + uri, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "ApifonWS " + TOKEN + ":" + signature,
-          "X-ApifonWS-Date": dateStr
-        },
-        body: bodyStr
-      });
-      
-      const data = await res.json();
-      console.log("Apifon SMS response:", res.status, JSON.stringify(data));
-      return { statusCode: res.ok ? 200 : res.status, body: JSON.stringify(data) };
+    const isSMS = type !== "viber";
+    const uri = isSMS ? "/services/api/v1/sms/send" : "/services/api/v1/im/send";
+    
+    const bodyObj = {
+      subscribers: [{ number: phone }],
+      message: {
+        text: text,
+        dc: "0"
+      },
+      sender: sender || "electrigon1"
+    };
+    
+    // Add SMS failover for Viber
+    if (!isSMS) {
+      bodyObj.sms_failover = { text: text };
     }
+    
+    const bodyStr = JSON.stringify(bodyObj);
+    const signature = getApifonSignature(SECRET, "POST", uri, bodyStr, dateStr);
+    
+    console.log("Apifon request - URI:", uri);
+    console.log("Apifon auth header:", "ApifonWS " + TOKEN.substring(0, 8) + "...");
+    console.log("Apifon body:", bodyStr);
+    
+    const res = await fetch("https://ars.apifon.com" + uri, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "ApifonWS " + TOKEN + ":" + signature,
+        "X-ApifonWS-Date": dateStr
+      },
+      body: bodyStr
+    });
+    
+    // Handle response - may not be JSON!
+    const responseText = await res.text();
+    console.log("Apifon response status:", res.status);
+    console.log("Apifon response body:", responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      // Response is not JSON (e.g. "Unauthorized")
+      data = { raw_response: responseText, status: res.status };
+    }
+    
+    if (!res.ok) {
+      console.error("Apifon error:", res.status, responseText);
+      return { statusCode: res.status, body: JSON.stringify({ error: responseText, status: res.status }) };
+    }
+    
+    return { statusCode: 200, body: JSON.stringify(data) };
+    
   } catch (e) {
     console.error("Apifon error:", e.message);
     return { statusCode: 500, body: JSON.stringify({ error: e.message }) };
