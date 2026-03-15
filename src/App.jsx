@@ -300,56 +300,45 @@ const sendEmail=async(to,subject,body)=>{
     });
     if(res.ok)console.log("📧 Email sent to:",to);
     else console.error("📧 Email failed:",await res.text());
-  }catch(e){console.error("Email error:",e);}
+  }catch(e){console.error("📧 Email error:",e);}
 };
 
-// === SMS/VIBER via Apifon ===
-const sendSMS=async(to,text,type="sms")=>{
-  if(!to)return;
-  try{
-    const res=await fetch("/.netlify/functions/send-sms",{
-      method:"POST",
-      headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({type,to,text})
-    });
-    if(res.ok)console.log("SMS sent to:",to);
-    else console.error("SMS failed:",await res.text());
-  }catch(e){console.error("SMS error:",e);}
-};
+// SMS/Viber via Apifon
+const sendSMS=async(to,text,type="sms")=>{if(!to)return;try{const res=await fetch("/.netlify/functions/send-sms",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type,to,text})});if(res.ok)console.log("📱 SMS sent:",to);else console.error("📱 SMS fail:",await res.text());}catch(e){console.error("📱 SMS error:",e);}};
 
-// === Notification triggers (Email + SMS) ===
+// Email notification triggers
 const notifyNewRequest=(reqId,agentName,provName,customerName)=>{
   const boUsers=users.filter(u=>u.role==="backoffice"||u.role==="director");
   boUsers.forEach(u=>{
     if(u.email)sendEmail(u.email,`Νέα αίτηση ${reqId}`,
-      `<h2>Νέα Αίτηση</h2>
+      `<h2>📨 Νέα Αίτηση</h2>
        <p><strong>ID:</strong> ${reqId}</p>
        <p><strong>Πελάτης:</strong> ${customerName}</p>
        <p><strong>Πάροχος:</strong> ${provName}</p>
        <p><strong>Agent:</strong> ${agentName}</p>
-       <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Ανοιγμα CRM</a></p>`);
-    if(u.mobile)sendSMS(u.mobile,`CRM: Νέα αίτηση ${reqId} - ${customerName} - ${provName} - Agent: ${agentName}`);
+       <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Άνοιγμα CRM</a></p>`);
+    if(u.mobile)sendSMS(u.mobile,`CRM: Nea aitisi ${reqId} - ${customerName} - ${provName}`);
   });
 };
 
-const notifyStatusChange=(reqId,newStatus,agentEmail,agentName,agentMobile)=>{
-  const st=ST[newStatus]||{l:newStatus,i:""};
-  if(agentEmail)sendEmail(agentEmail,`Αλλαγη κατ. ${reqId} - ${st.l}`,
-    `<h2>Αλλαγη Καταστασης</h2>
-     <p><strong>Αιτηση:</strong> ${reqId}</p>
-     <p><strong>Νεα κατασταση:</strong> ${st.l}</p>
-     <p><strong>Απο:</strong> ${cu?.name||"Συστημα"}</p>
-     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες την αιτηση</a></p>`);
-  if(agentMobile)sendSMS(agentMobile,`CRM: ${reqId} -> ${st.l} (απο ${cu?.name||"Συστημα"})`);
+const notifyStatusChange=(reqId,newStatus,agentEmail,agentName,agentMob)=>{
+  const st=ST[newStatus]||{l:newStatus,i:"📋"};
+  if(agentEmail)sendEmail(agentEmail,`Αλλαγή κατάστασης ${reqId} → ${st.l}`,
+    `<h2>${st.i} Αλλαγή Κατάστασης</h2>
+     <p><strong>Αίτηση:</strong> ${reqId}</p>
+     <p><strong>Νέα κατάσταση:</strong> ${st.i} ${st.l}</p>
+     <p><strong>Από:</strong> ${cu?.name||"Σύστημα"}</p>
+     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#E60000;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες την αίτηση</a></p>`);
+  if(agentMob)sendSMS(agentMob,`CRM: ${reqId} -> ${st.l}`);
 };
 
-const notifyComment=(reqId,commenterName,agentEmail,agentMobile)=>{
-  if(agentEmail)sendEmail(agentEmail,`Σχολιο στο ${reqId}`,
-    `<h2>Νεο Σχολιο</h2>
-     <p><strong>Αιτηση:</strong> ${reqId}</p>
-     <p><strong>Απο:</strong> ${commenterName}</p>
-     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#2196F3;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες το σχολιο</a></p>`);
-  if(agentMobile)sendSMS(agentMobile,`CRM: Σχολιο στο ${reqId} απο ${commenterName}`);
+const notifyComment=(reqId,commenterName,agentEmail,agentMob)=>{
+  if(agentEmail)sendEmail(agentEmail,`Νέο σχόλιο στο ${reqId}`,
+    `<h2>💬 Νέο Σχόλιο</h2>
+     <p><strong>Αίτηση:</strong> ${reqId}</p>
+     <p><strong>Από:</strong> ${commenterName}</p>
+     <p><a href="https://${typeof window!=="undefined"?window.location.host:""}" style="display:inline-block;padding:10px 20px;background:#2196F3;color:white;border-radius:6px;text-decoration:none;font-weight:700">Δες το σχόλιο</a></p>`);
+  if(agentMob)sendSMS(agentMob,`CRM: Sxolio sto ${reqId} apo ${commenterName}`);
 };
 const myN=notifs.filter(n=>n.uid===cu?.id&&!n.read);
 
@@ -2054,7 +2043,7 @@ return(<div style={{padding:20,maxWidth:900,margin:"0 auto"}}>
 </div>);
 }
 
-// === ENERGY COMPARE (_____) ===
+// === ENERGY COMPARE (ΡΑΑΕΥ) ===
 function EnergyCompareSummary(){
 const [activeTab,setActiveTab]=useState(null);
 const tabs=[
@@ -2462,7 +2451,7 @@ const uniqueAgents=[...new Set(reqs.map(r=>r.agentName).filter(Boolean))].sort()
 const uniquePartners=[...new Set(reqs.map(r=>r.partner).filter(Boolean))].sort();
 const activeReqs=allReqs.filter(r=>r.status==="active"||r.status==="credited");
 
-// ___ AGGREGATIONS ___
+// ─── AGGREGATIONS ───
 const byProvider=Object.entries(PROVIDERS).map(([k,p])=>{
   const pr=reqs.filter(r=>r.prov===k);const act=pr.filter(r=>r.status==="active"||r.status==="credited");
   const rev=act.reduce((s,r)=>s+(parseFloat(r.price)||0),0);
@@ -2651,7 +2640,7 @@ const [showC,setShowC]=useState(false);
 const [nc,setNc]=useState({afm:"",ln:"",fn:"",mob:"",city:""});
 
 
-// ___ OVERVIEW ___
+// ─── OVERVIEW ───
 if(sec==="ov")return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"2rem",fontWeight:900,marginBottom:4}}>👑 Admin Panel</h1>
 <p style={{color:"#888",fontSize:"0.85rem",marginBottom:20}}>Πλήρης διαχείριση χωρίς κώδικα</p>
@@ -2667,7 +2656,7 @@ if(sec==="ov")return(<div>
 <AdmCd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
 </div></div>);
 
-// ___ USERS ___
+// ─── USERS ───
 if(sec==="us")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>👥 Χρήστες & Partners</h1>
 <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap"}}>
@@ -2693,7 +2682,7 @@ if(sec==="us")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px"}}><button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} style={{padding:"3px 10px",borderRadius:5,border:"none",background:u.paused?"#E8F5E9":"#FFF3E0",color:u.paused?"#2E7D32":"#E65100",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>{u.paused?"▶ Ενεργοποίηση":"⏸ Παύση"}</button></td>
 <td style={{padding:"7px 10px"}}>{u.role!=="admin"&&<button onClick={()=>{if(confirm("Διαγραφή "+u.name+"?"))setUsers(p=>p.filter(x=>x.id!==u.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button>}</td></tr>)}</tbody></table></div></div>);
 
-// ___ FIELDS ___
+// ─── FIELDS ───
 if(sec==="fl")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:6}}>📋 Πεδία Φόρμας</h1>
 <p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Προσθήκη/αφαίρεση πεδίων, τύπος, max χαρακτήρες</p>
@@ -2712,7 +2701,7 @@ if(sec==="fl")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <button onClick={()=>setFlds(p=>p.map(x=>x.id===f.id?{...x,on:x.on?0:1}:x))} style={{padding:"2px 6px",borderRadius:3,border:"none",background:"#E3F2FD",color:"#1976D2",cursor:"pointer",fontSize:"0.66rem"}}>{f.on?"🔒":"🔓"}</button>
 <button onClick={()=>setFlds(p=>p.filter(x=>x.id!==f.id))} style={{padding:"2px 6px",borderRadius:3,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.66rem"}}>🗑</button></div></td></tr>)}</tbody></table></div></div>);
 
-// ___ DROPDOWNS ___
+// ─── DROPDOWNS ───
 if(sec==="dd")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:6}}>📝 Dropdown Lists</h1>
 <p style={{fontSize:"0.82rem",color:"#666",marginBottom:14}}>Αλλαγή χωρίς κώδικα!</p>
@@ -2724,7 +2713,7 @@ if(sec==="dd")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 </div>)}
 <div style={{display:"flex",gap:6,marginTop:10}}><input placeholder="Νέα λίστα..." value={ddName} onChange={e=>setDdName(e.target.value)} style={{...iS,flex:1}}/><button onClick={()=>{if(ddName.trim()){setDds(p=>[...p,{n:ddName.trim(),it:[]}]);setDdName("");}}} style={B(pr.color,"white",{})}>➕</button></div></div>);
 
-// ___ CUSTOMERS ___
+// ─── CUSTOMERS ───
 if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>👤 Πελάτες -- ΑΦΜ</h1>
 <button onClick={()=>setShowC(!showC)} style={B(pr.grad,"white",{marginBottom:12})}>➕ Νέος</button>
@@ -2736,7 +2725,7 @@ if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 {afmDb.map(c=><tr key={c.afm} style={{borderBottom:"1px solid #F5F5F5"}}><td style={{padding:"7px 10px",fontWeight:600}}>{c.afm}</td><td style={{padding:"7px 10px"}}>{c.ln} {c.fn}</td><td style={{padding:"7px 10px"}}>{c.mob}</td><td style={{padding:"7px 10px"}}>{c.city||c.ct}</td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή;"))setAfmDb(p=>p.filter(x=>x.afm!==c.afm));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div>);
 
-// ___ REQUESTS ___
+// ─── REQUESTS ───
 if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.length})</h1>
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ID","Πελάτης","ΑΦΜ","Πρόγρ.","Status","Agent",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
@@ -2749,7 +2738,7 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.agentName}</td>
 <td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
 
-// ___ ENERGY REQUESTS ___
+// ─── ENERGY REQUESTS ───
 if(sec==="erq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>⚡ Αιτήσεις Ρεύματος (Admin)</h1>
 {(()=>{const eReqs=reqs.filter(r=>r.prov==="energy");
@@ -2775,7 +2764,7 @@ return(<>
 </>);})()}
 </div>);
 
-// ___ SYSTEM ___
+// ─── SYSTEM ───
 if(sec==="tk")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🎫 Διαχείριση Αιτημάτων</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
@@ -2815,7 +2804,7 @@ if(sec==="sy")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <div><div style={{fontWeight:700,fontSize:"0.82rem"}}>{ROLES[u.role]?.i} {u.name} <span style={{fontSize:"0.68rem",padding:"2px 6px",borderRadius:4,background:u.paused?"#FFE6E6":"#E6F9EE",color:u.paused?"#E60000":"#00A651",fontWeight:700}}>{u.paused?"🔴 ΣΕ ΠΑΥΣΗ":"🟢 ΕΝΕΡΓΟΣ"}</span></div><div style={{fontSize:"0.72rem",color:"#888"}}>{ROLES[u.role]?.l}</div></div>
 <button onClick={()=>setUsers(p=>p.map(x=>x.id===u.id?{...x,paused:x.paused?0:1}:x))} style={B(u.paused?"#4CAF50":"#FF9800","white",{fontSize:"0.75rem",padding:"5px 12px"})}>{u.paused?"▶ Ενεργοποίηση":"⏸ Παύση"}</button></div>)}</div></div></div>);
 
-// ___ SUPABASE ___
+// ─── SUPABASE ───
 if(sec==="db")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>🗃️ Supabase</h1>
 <div style={{background:"white",borderRadius:12,padding:18,marginBottom:16}}>
