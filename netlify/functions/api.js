@@ -73,7 +73,7 @@ exports.handler = async function(event) {
       const { username, email } = params || {};
       if (!username || !email) return er(400, 'Missing fields');
       const r = await dbQ(URL, KEY, 'users', 'GET', null, `username=eq.${encodeURIComponent(username)}&email=eq.${encodeURIComponent(email)}&select=id,name,email`);
-      if (!r.ok || !Array.isArray(r.d) || r.d.length === 0) return ok({ sent: true });
+      if (!r.ok || !Array.isArray(r.d) || r.d.length === 0) return er(404, 'Δεν βρέθηκε χρήστης με αυτό το username και email');
       const u = r.d[0];
       const code = String(Math.floor(100000 + Math.random() * 900000));
       await dbQ(URL, KEY, 'users', 'PATCH', { reset_code: hashPW(code), reset_expires: new Date(Date.now() + 15 * 60 * 1000).toISOString() }, `id=eq.${u.id}`);
