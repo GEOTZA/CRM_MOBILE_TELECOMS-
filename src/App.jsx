@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 
 /* ═══ SHEETJS XLSX EXPORT ═══ */
@@ -36,8 +35,8 @@ const downloadAll=async(docs)=>{
 /* ═══ SECURE API CONFIG ═══ */
 const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "";
 const USE_SUPA = !!SUPA_URL;
-let _authToken = null;
-const setAuthToken = (t) => { _authToken = t; };
+let _authToken = sessionStorage.getItem('crm_token')||null;
+const setAuthToken = (t) => { _authToken = t; if(t)sessionStorage.setItem('crm_token',t);else sessionStorage.removeItem('crm_token'); };
 const getAuthToken = () => _authToken;
 
 // Secure API call - all DB operations go through Netlify function
@@ -269,6 +268,7 @@ const[sf,setSF]=useState("all");const[sel,setSel]=useState(null);const[vm,setVM]
 const[selTix,setSelTix]=useState(null);const[sysPaused,setSysPaused]=useState(false);
 const[lf,setLF]=useState({un:"",pw:""});const[resetMode,setResetMode]=useState(0);const[resetForm,setRF]=useState({un:"",email:"",code:"",newPW:"",confirm:""});
 
+useEffect(()=>{const t=sessionStorage.getItem('crm_token');const u=sessionStorage.getItem('crm_user');if(t&&u){try{setAuthToken(t);setCU(JSON.parse(u));setLI(true);loadFromSupa();}catch(e){sessionStorage.clear();}}},[]); 
 const P=cu?PERMS[cu.role]:{};const pr=PROVIDERS[prov];const rl=cu?ROLES[cu.role]:{};
 const addN=(uid,txt)=>setNotifs(p=>[{id:`N${Date.now()}`,uid,txt,ts:ts(),read:0},...p]);
 
@@ -346,7 +346,7 @@ const doLogin=async()=>{
     const u=data.user;
     const cu={id:u.id,un:u.username,name:u.name,email:u.email,role:u.role,partner:u.partner,active:1,paused:0,cc:u.can_create?1:0,mustChangePW:u.must_change_pw||false,accessGroup:u.access_group||"all",mobile:u.mobile||"",supervisor:u.supervisor||""};
     console.log("✅ LOGIN SUCCESS:",cu.name,cu.role);
-    setCU(cu);setLI(true);setGDPR(u.gdpr_consent||false);
+    setCU(cu);setLI(true);setGDPR(u.gdpr_consent||false);sessionStorage.setItem('crm_user',JSON.stringify(cu));
     loadFromSupa();
   }catch(e){
     console.error("Login error:",e);
@@ -525,7 +525,7 @@ return(
 {myN.length>0&&<span style={{position:"absolute",top:-5,right:-7,background:"#FFD700",color:"#1A1A2E",fontSize:"0.58rem",fontWeight:800,width:16,height:16,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center"}}>{myN.length}</span>}
 </div>
 <span style={{color:"rgba(255,255,255,0.9)",fontSize:"0.8rem"}}>{cu.name}</span>
-<button onClick={()=>{auditLog(cu?.id,"logout","users",cu?.id,{});setLI(false);setCU(null);setLF({un:"",pw:""});}} style={{background:"rgba(255,255,255,0.2)",color:"white",border:"1px solid rgba(255,255,255,0.3)",padding:"4px 12px",borderRadius:6,cursor:"pointer",fontSize:"0.75rem",fontWeight:600}}>Logout</button>
+<button onClick={()=>{auditLog(cu?.id,"logout","users",cu?.id,{});setLI(false);setCU(null);setLF({un:"",pw:""});sessionStorage.clear();setAuthToken(null);}} style={{background:"rgba(255,255,255,0.2)",color:"white",border:"1px solid rgba(255,255,255,0.3)",padding:"4px 12px",borderRadius:6,cursor:"pointer",fontSize:"0.75rem",fontWeight:600}}>Logout</button>
 <span style={{fontSize:"0.65rem",padding:"2px 8px",borderRadius:4,background:USE_SUPA?"rgba(76,175,80,0.3)":"rgba(255,152,0,0.3)",color:"white",fontWeight:600}}>{USE_SUPA?"🟢 Online":"🟡 Local"}</span>
 </div></div>
 {/* PROVIDERS + ENERGY in header */}
@@ -583,6 +583,7 @@ return(<>
 {sItem("dash","📊","Αιτήσεις")}
 {sItem("search","🔍","Αναζήτηση")}
 {sItem("offers","🏷️","Προσφορές")}
+{P.reports&&sItem("reports","📈","Reports")}
 </>}
 {hasEnergy&&<>{sHead("ΡΕΥΜΑ")}
 {sItem("e_dash","⚡","Αιτήσεις")}
@@ -594,7 +595,6 @@ return(<>
 {(tixEnabled||cu?.role==="admin")&&sItem("tix","🎫","Αιτήματα")}
 {sItem("tools_pdf","📄","Εργαλεία PDF")}
 {hasEnergy&&sItem("tools_energy","⚡","Εργαλεία Ρεύμα")}
-{P.reports&&hasTelecom&&sItem("reports","📈","Reports Telecom")}
 {P.users&&sItem("users","👥","Χρήστες")}
 {P.adminPanel&&sItem("admin","👑","Admin")}
 </>);})()}
@@ -1835,24 +1835,41 @@ return(<div style={{maxWidth:900,margin:"0 auto"}}>
 </div>}
 
 {/* OFFERS */}
-{eTab==="offers"&&<div>
+{eTab==="offers"&&<EnergyOffersTab cu={cu}/>}
+
+</div>);
+}
+
+
+// === ENERGY OFFERS TAB ===
+function EnergyOffersTab({cu}){
+const [eOffers,setEOffers]=useState({});
+const canUp=["admin","director","backoffice"].includes(cu.role);
+useEffect(()=>{
+  if(USE_SUPA){apiCall("db",{method:"select",table:"offers",match:"provider=like.energy_*&select=*"}).then(r=>{
+    const m={};(r.data||[]).forEach(o=>{m[o.provider]=o;});setEOffers(m);
+  }).catch(e=>console.warn("Energy offers load:",e));}
+},[]);
+return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🏷️ Προσφορές Ρεύματος</h1>
-{(()=>{const canUp=["admin","director","backoffice"].includes(cu.role);
-return Object.entries(ENERGY_PROVIDERS).slice(0,10).map(([k,ep])=>{
-const offerKey=`energy_offer_${k}`;
-const existing=reqs.find(r=>r.id===offerKey);
+{Object.entries(ENERGY_PROVIDERS).slice(0,10).map(([k,ep])=>{
+const offerData=eOffers["energy_"+k];
 return(
 <div key={k} style={{background:"white",borderRadius:10,padding:14,marginBottom:8,border:"1px solid #E0E0E0",borderLeft:`4px solid ${ep.color}`}}>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-<div><div style={{fontWeight:700,fontSize:"0.88rem",color:ep.color}}>{ep.name}</div>
-<div style={{fontSize:"0.72rem",color:"#888",marginTop:2}}>{ep.programs.slice(0,3).join(", ")}{ep.programs.length>3?"...":""}</div></div>
+<div style={{flex:1}}>
+<div style={{fontWeight:700,fontSize:"0.88rem",color:ep.color}}>{ep.name}</div>
+<div style={{fontSize:"0.72rem",color:"#888",marginTop:2}}>{ep.programs.slice(0,3).join(", ")}{ep.programs.length>3?"...":""}</div>
+{offerData&&offerData.file_path&&<div style={{marginTop:6,display:"flex",gap:6,alignItems:"center"}}>
+<button onClick={()=>downloadDoc(offerData.file_path,offerData.description||"offer.pdf")} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📥 {offerData.description||"Λήψη"}</button>
+<span style={{fontSize:"0.65rem",color:"#999"}}>{offerData.updated_at?new Date(offerData.updated_at).toLocaleDateString("el"):""}</span>
+</div>}
+</div>
 {canUp&&<div style={{display:"flex",gap:4}}>
-<input type="file" accept=".pdf,image/*" id={`eoff_${k}`} style={{display:"none"}} onChange={async e=>{const f=e.target.files[0];if(!f||!USE_SUPA)return;try{const path=`energy_offers/${k}/${Date.now()}_${f.name}`;await storageUpload(path,f);alert(`✅ Ανέβηκε: ${f.name}`);}catch(err){alert("Σφάλμα: "+err.message);}}}/>
+<input type="file" accept=".pdf,image/*" id={`eoff_${k}`} style={{display:"none"}} onChange={async e=>{const f=e.target.files[0];if(!f||!USE_SUPA)return;try{const path=`energy_offers/${k}/${Date.now()}_${f.name}`;await storageUpload(path,f);await apiCall("db",{method:"upsert",table:"offers",data:{provider:"energy_"+k,slot:0,description:f.name,file_path:path,updated_at:new Date().toISOString()}});setEOffers(p=>({...p,["energy_"+k]:{file_path:path,description:f.name,updated_at:new Date().toISOString()}}));alert("✅ Ανέβηκε: "+f.name);}catch(err){alert("Σφάλμα: "+err.message);}}}/>
 <button onClick={()=>document.getElementById(`eoff_${k}`).click()} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+ep.color,background:"white",color:ep.color,cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>📤 Upload</button>
 </div>}
-</div></div>);})})()}
-</div>}
-
+</div></div>);})}
 </div>);
 }
 
@@ -2607,8 +2624,8 @@ if(sec==="ov")return(<div>
 <AdmCd ic="📋" ti="Πεδία Φόρμας" ds="Προσθήκη, αφαίρεση, validation" ct={flds.length} cl="#2196F3" onClick={()=>setSec("fl")}/>
 <AdmCd ic="📝" ti="Dropdown Lists" ds="Προγράμματα, couriers, υπηρεσίες" ct={dds.length} cl="#FF9800" onClick={()=>setSec("dd")}/>
 <AdmCd ic="👤" ti="Πελάτες ΑΦΜ" ds="Βάση δεδομένων, προσθήκη/διαγραφή" ct={afmDb.length} cl="#9C27B0" onClick={()=>setSec("cu")}/>
-<AdmCd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, διαγραφή, status" ct={reqs.filter(r=>r.prov!=="energy").length} cl="#FF5722" onClick={()=>setSec("rq")}/>
-<AdmCd ic="⚡" ti="Αιτήσεις Ρεύματος" ds="Διαχείριση αιτήσεων ρεύματος" ct={reqs.filter(r=>r.prov==="energy").length} cl="#FF6F00" onClick={()=>setSec("erq")}/>
+<AdmCd ic="📊" ti="Αιτήσεις" ds="Επεξεργασία, απόκρυψη, status" ct={reqs.filter(r=>r.prov!=="energy"&&!r.hidden).length} cl="#FF5722" onClick={()=>setSec("rq")}/>
+<AdmCd ic="⚡" ti="Αιτήσεις Ρεύματος" ds="Διαχείριση αιτήσεων ρεύματος" ct={reqs.filter(r=>r.prov==="energy"&&!r.hidden).length} cl="#FF6F00" onClick={()=>setSec("erq")}/>
 <AdmCd ic="🎫" ti="Αιτήματα" ds="Διαχείριση tickets" ct={tix?.length||0} cl="#9C27B0" onClick={()=>setSec("tk")}/>
 <AdmCd ic="🔧" ti="Σύστημα" ds="Παύση συστήματος" cl="#607D8B" onClick={()=>setSec("sy")}/>
 <AdmCd ic="🗃️" ti="Supabase" ds="SQL Schema & σύνδεση" cl="#3ECF8E" onClick={()=>setSec("db")}/>
