@@ -329,7 +329,7 @@ const notifyComment=(reqId,commenterName,agentEmail)=>{
 };
 const myN=notifs.filter(n=>n.uid===cu?.id&&!n.read);
 
-const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov);r=r.filter(x=>x.status!=="draft"||x.agentId===cu.id);if(P.viewAll)return r;if(P.ownTeam){const myPartners=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myAgentIds=users.filter(u=>myPartners.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myAgentIds=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
+const visReqs=()=>{if(!cu)return[];let r=reqs.filter(x=>x.prov===prov&&!x.hidden);r=r.filter(x=>x.status!=="draft"||x.agentId===cu.id);if(P.viewAll)return r;if(P.ownTeam){const myPartners=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myAgentIds=users.filter(u=>myPartners.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myAgentIds=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myAgentIds.includes(x.agentId)||x.agentId===cu.id);}if(P.ownOnly)return r.filter(x=>x.agentId===cu.id);return r;};
 const vr=visReqs();const fr=vr.filter(r=>sf==="all"||r.status===sf);
 const stats={};Object.keys(ST).forEach(k=>{stats[k]=vr.filter(r=>r.status===k).length});stats.total=vr.length;
 
@@ -374,7 +374,7 @@ const loadFromSupa=async()=>{
     if(data.afm_database&&Array.isArray(data.afm_database)) setAfmDb(data.afm_database);
     // Requests
     if(data.requests&&Array.isArray(data.requests)){
-      setReqs(data.requests.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,billAddr:r.bill_addr||"",billCity:r.bill_city||"",billTk:r.bill_tk||"",showBillAddr:!!(r.bill_addr),pendR:r.pend_r,canR:r.can_r,prov:r.provider,startDate:r.start_date||"",duration:r.duration||"24",endDate:r.end_date||"",creditDate:r.credit_date||"",lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
+      setReqs(data.requests.map(r=>({...r,agentId:r.agent_id,agentName:r.agent_name,hidden:r.hidden||false,cour:r.courier,cAddr:r.c_addr,cCity:r.c_city,cTk:r.c_tk,billAddr:r.bill_addr||"",billCity:r.bill_city||"",billTk:r.bill_tk||"",showBillAddr:!!(r.bill_addr),pendR:r.pend_r,canR:r.can_r,prov:r.provider,startDate:r.start_date||"",duration:r.duration||"24",endDate:r.end_date||"",creditDate:r.credit_date||"",lines:r.lines?JSON.parse(r.lines):[],documents:r.documents?JSON.parse(r.documents):[],comments:[]})));
     }
     // Tickets
     if(data.tickets&&Array.isArray(data.tickets)){
@@ -2693,7 +2693,7 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.prog}</td>
 <td style={{padding:"7px 10px"}}><select value={r.status} onChange={async e=>{const ns=e.target.value;const updates={status:ns};if(ns==="active"&&!r.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(r.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.endDate=ed.toISOString().slice(0,10);}if(ns==="credited"&&!r.creditDate){updates.creditDate=new Date().toISOString().slice(0,10);}setReqs(p=>p.map(x=>x.id===r.id?{...x,...updates}:x));if(USE_SUPA){try{const dbUp={status:ns};if(updates.startDate){dbUp.start_date=updates.startDate;dbUp.end_date=updates.endDate;}if(updates.creditDate){dbUp.credit_date=updates.creditDate;}await supa.from("requests").update(dbUp).eq("id",r.id);}catch(e2){console.error("❌",e2);}}}} style={{...iS,width:155,padding:"3px 6px",fontSize:"0.72rem",background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c||"#333",fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.agentName}</td>
-<td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
+<td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Απόκρυψη "+r.id+"?")){setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:true}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:true},match:`id=eq.${r.id}`}).catch(e=>console.error(e));} Commit → Deploy. Τώρα η "διαγραφή" θα κρύβει την αίτηση αντί να τη σβήνει, και θα μένει στη βάση για πάντα.  Θέλεις να προσθέσω και κουμπί "Εμφάνιση κρυμμένων" στο Admin;}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
 
 // ─── ENERGY REQUESTS ───
 if(sec==="erq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
@@ -2716,7 +2716,7 @@ return(<>
 <td style={{padding:"7px 8px"}}><select value={r.status} onChange={e=>setReqs(p=>p.map(x=>x.id===r.id?{...x,status:e.target.value}:x))} style={{padding:"2px 4px",borderRadius:4,fontSize:"0.7rem",fontWeight:600,background:st.bg,color:st.c,border:"1px solid "+st.c}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
 <td style={{padding:"7px 8px"}}>{r.agentName}</td>
 <td style={{padding:"7px 8px"}}>{fmtDate(r.created)}</td>
-<td style={{padding:"7px 8px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"2px 6px",cursor:"pointer",fontSize:"0.68rem"}}>🗑</button></td>
+<td style={{padding:"7px 8px"}}><button onClick={()=>{if(confirm("Απόκρυψη "+r.id+"?")){setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:true}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:true},match:`id=eq.${r.id}`}).catch(e=>console.error(e));} Commit → Deploy. Τώρα η "διαγραφή" θα κρύβει την αίτηση αντί να τη σβήνει, και θα μένει στη βάση για πάντα.  Θέλεις να προσθέσω και κουμπί "Εμφάνιση κρυμμένων" στο Admin;}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"2px 6px",cursor:"pointer",fontSize:"0.68rem"}}>🗑</button></td>
 </tr>);})}</tbody></table></div>
 </>);})()}
 </div>);
