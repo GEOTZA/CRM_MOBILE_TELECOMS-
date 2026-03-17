@@ -652,7 +652,7 @@ return(<>
 {tab==="search"&&(()=>{
 const ss=v=>e=>setSrch(p=>({...p,[v]:e.target.value}));
 const clear=()=>setSrch({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
-const allR0=(()=>{let r=reqs.filter(x=>x.prov===prov);if(P.viewAll)return r;if(P.ownTeam){const myP=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myA=users.filter(u=>myP.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myA.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myA=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myA.includes(x.agentId)||x.agentId===cu.id);}return r.filter(x=>x.agentId===cu.id);})();
+const allR0=(()=>{let r=reqs.filter(x=>x.prov===prov&&!x.hidden);if(P.viewAll)return r;if(P.ownTeam){const myP=users.filter(u=>u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.name);const myA=users.filter(u=>myP.includes(u.partner)||u.supervisor===cu.id||u.supervisor===cu.name).map(u=>u.id);return r.filter(x=>myA.includes(x.agentId)||x.agentId===cu.id);}if(P.ownAgents){const myA=users.filter(u=>u.partner===cu.name||u.partner===cu.partner).map(u=>u.id);return r.filter(x=>myA.includes(x.agentId)||x.agentId===cu.id);}return r.filter(x=>x.agentId===cu.id);})();
 const allR=allR0.filter(x=>x.status!=="draft"||x.agentId===cu.id);
 let res=allR;
 if(srch.afm)res=res.filter(r=>(r.afm||"").includes(srch.afm));
@@ -1527,7 +1527,7 @@ useEffect(()=>{if(initTab)setETab(initTab);},[initTab]); // dash, form, detail, 
 const[eVM,setEVM]=useState("list");
 const[eSel,setESel]=useState(null);
 const[eSF,setESF]=useState("all");
-const energyReqs=reqs.filter(r=>r.prov==="energy"&&(r.status!=="draft"||r.agentId===cu.id));
+const energyReqs=reqs.filter(r=>r.prov==="energy"&&!r.hidden&&(r.status!=="draft"||r.agentId===cu.id));
 const eFR=energyReqs.filter(r=>eSF==="all"||r.status===eSF);
 const iS={width:"100%",padding:"7px 10px",borderRadius:6,border:"1px solid #DDD",fontSize:"0.82rem"};
 
@@ -2383,7 +2383,7 @@ function ReportsPanel({reqs,users,pr,prov,PROVIDERS,ST,expReport,expXLSX}){
 const[rTab,setRTab]=useState("overview");const[rProv,setRProv]=useState("all");
 const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",svc:"",dateFrom:"",dateTo:"",partner:"",provider:"",agent:"",status:"",name:""});
 const[srchRes,setSrchRes]=useState(null);
-const allReqs=rProv==="all"?reqs:reqs.filter(r=>r.prov===rProv);
+const allReqs=(rProv==="all"?reqs:reqs.filter(r=>r.prov===rProv)).filter(r=>!r.hidden);
 
 // Search function
 const doSearch=()=>{
@@ -2680,13 +2680,13 @@ if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <button onClick={()=>{if(nc.afm&&nc.ln){setAfmDb(p=>[...p,{...nc,fat:"",bd:"",adt:"",ph:"",em:"",doy:"",tk:"",addr:"",ct:nc.city}]);setNc({afm:"",ln:"",fn:"",mob:"",city:""});setShowC(false);}}} style={B("#4CAF50","white",{})}>✅</button></div>}
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ΑΦΜ","Ονοματεπώνυμο","Κινητό","Πόλη",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
 {afmDb.map(c=><tr key={c.afm} style={{borderBottom:"1px solid #F5F5F5"}}><td style={{padding:"7px 10px",fontWeight:600}}>{c.afm}</td><td style={{padding:"7px 10px"}}>{c.ln} {c.fn}</td><td style={{padding:"7px 10px"}}>{c.mob}</td><td style={{padding:"7px 10px"}}>{c.city||c.ct}</td>
-<td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή;"))setAfmDb(p=>p.filter(x=>x.afm!==c.afm));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div>);
+<td style={{padding:"7px 10px"}}><div style={{display:"flex",gap:3}}>{!r.hidden?<button onClick={()=>{if(confirm("Απόκρυψη "+r.id+"?")){setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:true}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:true},match:`id=eq.${r.id}`}).catch(e=>console.error(e));}}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🙈</button>:<button onClick={()=>{setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:false}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:false},match:`id=eq.${r.id}`}).catch(e=>console.error(e));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>👁 Επαναφορά</button>}</div></td>
 
 // ─── REQUESTS ───
 if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
-<h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.length})</h1>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.filter(r=>!r.hidden).length}) {reqs.filter(r=>r.hidden).length>0&&<span style={{fontSize:"0.78rem",color:"#999",fontWeight:400}}>| 🙈 Κρυμμένες: {reqs.filter(r=>r.hidden).length}</span>}</h1>
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ID","Πελάτης","ΑΦΜ","Πρόγρ.","Status","Agent",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
-{reqs.map(r=><tr key={r.id} style={{borderBottom:"1px solid #F5F5F5"}}>
+{reqs.map(r=><tr key={r.id} style={{borderBottom:"1px solid #F5F5F5",background:r.hidden?"#FFF8E1":"white",opacity:r.hidden?0.6:1}}>
 <td style={{padding:"7px 10px",fontWeight:700,color:pr.color,fontSize:"0.78rem"}}>{r.id}</td>
 <td style={{padding:"7px 10px"}}>{r.ln} {r.fn}</td>
 <td style={{padding:"7px 10px",fontSize:"0.78rem"}}>{r.afm}</td>
