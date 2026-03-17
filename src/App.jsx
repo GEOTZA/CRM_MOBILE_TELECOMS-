@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 
 /* ═══ SHEETJS XLSX EXPORT ═══ */
@@ -1668,8 +1669,6 @@ const EnergyForm=({ed,onCancel})=>{
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>✍️ Υπογραφή</div>
   <SigPad onSave={d=>s("sig",d)} ex={form.sig}/></div>
 
-  {/* Notes */}
-  <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   {/* Courier */}
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>🚚 Courier</div>
