@@ -312,7 +312,7 @@ const notifyNewRequest=(reqId,agentName,provName,customerName)=>{
 
 const notifyStatusChange=(reqId,newStatus,agentEmail,agentName)=>{
   const st=ST[newStatus]||{l:newStatus,i:"📋"};
-  if(agentEmail)sendEmail(agentEmail,`Αλλαγή κατάστασης ${reqId} -> ${st.l}`,
+  if(agentEmail)sendEmail(agentEmail,`Αλλαγή κατάστασης ${reqId} → ${st.l}`,
     `<h2>${st.i} Αλλαγή Κατάστασης</h2>
      <p><strong>Αίτηση:</strong> ${reqId}</p>
      <p><strong>Νέα κατάσταση:</strong> ${st.i} ${st.l}</p>
@@ -645,7 +645,7 @@ return(<>
 {tab==="dash"&&(vm==="form"||vm==="edit")&&<ReqForm pr={pr} prov={prov} onSave={saveReq} onCancel={()=>setVM("list")} ed={vm==="edit"?sel:null} db={afmDb} P={P} cu={cu}/>}
 
 {/* DETAIL */}
-{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"->",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"->",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} -> ${ST[s]?.l||s}`);const agentU=users.find(u=>u.id===sel.agentId);if(agentU?.email)notifyStatusChange(sel.id,s,agentU.email,agentU.name);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
+{tab==="dash"&&vm==="detail"&&sel&&<Detail r={sel} pr={pr} prov={prov} P={P} cu={cu} onBack={()=>{setVM("list");setSF("all");}} onEdit={()=>setVM("edit")} onComment={t=>addComment(sel.id,t)} onSC={async(s)=>{console.log("📝 Status change:",sel.id,"→",s);const updates={status:s};if(s==="active"&&!sel.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(sel.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.start_date=td;updates.endDate=ed.toISOString().slice(0,10);updates.end_date=ed.toISOString().slice(0,10);console.log("📅 Auto-set dates:",td,"→",ed.toISOString().slice(0,10));}if(s==="credited"){const td=new Date().toISOString().slice(0,10);updates.creditDate=td;updates.credit_date=td;console.log("💳 Auto-set credit date:",td);}const updatedReq={...sel,...updates};setReqs(p=>{const n=p.map(r=>r.id===sel.id?{...r,...updates}:r);return n;});setSel(updatedReq);setSF("all");if(sel.agentId&&sel.agentId!==cu.id)addN(sel.agentId,`📋 Αλλαγή κατάστασης ${sel.id} → ${ST[s]?.l||s}`);const agentU=users.find(u=>u.id===sel.agentId);if(agentU?.email)notifyStatusChange(sel.id,s,agentU.email,agentU.name);if(USE_SUPA){try{const dbUp={status:s};if(updates.start_date){dbUp.start_date=updates.start_date;dbUp.end_date=updates.end_date;}if(updates.credit_date){dbUp.credit_date=updates.credit_date;}await supa.from("requests").update(dbUp).eq("id",sel.id);auditLog(cu.id,"update","requests",sel.id,{status:s,...(updates.start_date?{start_date:updates.start_date}:{}),...(updates.credit_date?{credit_date:updates.credit_date}:{})});console.log("✅ Saved to Supabase");}catch(e){console.error("❌ Status update error:",e);}}}}/>}
 
 {/* TICKETS */}
 {/* ═══ SEARCH ═══ */}
@@ -1667,7 +1667,9 @@ const EnergyForm=({ed,onCancel})=>{
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>✍️ Υπογραφή</div>
   <SigPad onSave={d=>s("sig",d)} ex={form.sig}/></div>
-    
+
+  {/* Notes */}
+  <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   {/* Courier */}
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>🚚 Courier</div>
@@ -2680,12 +2682,11 @@ if(sec==="cu")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <button onClick={()=>{if(nc.afm&&nc.ln){setAfmDb(p=>[...p,{...nc,fat:"",bd:"",adt:"",ph:"",em:"",doy:"",tk:"",addr:"",ct:nc.city}]);setNc({afm:"",ln:"",fn:"",mob:"",city:""});setShowC(false);}}} style={B("#4CAF50","white",{})}>✅</button></div>}
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ΑΦΜ","Ονοματεπώνυμο","Κινητό","Πόλη",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
 {afmDb.map(c=><tr key={c.afm} style={{borderBottom:"1px solid #F5F5F5"}}><td style={{padding:"7px 10px",fontWeight:600}}>{c.afm}</td><td style={{padding:"7px 10px"}}>{c.ln} {c.fn}</td><td style={{padding:"7px 10px"}}>{c.mob}</td><td style={{padding:"7px 10px"}}>{c.city||c.ct}</td>
-<td style={{padding:"7px 10px"}}><button onClick={async()=>{if(!confirm("Διαγραφή πελάτη "+c.afm+";"))return;setAfmDb(p=>p.filter(x=>x.afm!==c.afm));if(USE_SUPA){try{await apiCall("db",{method:"delete",table:"afm_database",match:`afm=eq.${c.afm}`});}catch(e){console.error(e);}}}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}
-</tbody></table></div></div>);
+<td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Διαγραφή;"))setAfmDb(p=>p.filter(x=>x.afm!==c.afm));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div>);
 
 // ─── REQUESTS ───
 if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
-<h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.filter(r=>!r.hidden).length}) {reqs.filter(r=>r.hidden).length>0&&<span style={{fontSize:"0.78rem",color:"#999",fontWeight:400}}>| 🙈 Κρυμμένες: {reqs.filter(r=>r.hidden).length}</span>}</h1>
+<h1 style={{fontFamily:"'Outfit'",fontSize:"1.5rem",fontWeight:900,marginBottom:14}}>📊 Αιτήσεις ({reqs.filter(r=>!r.hidden).length}) {reqs.filter(r=>r.hidden).length>0&&<span style={{fontSize:"0.78rem",color:"#FF9800",fontWeight:400}}>| 🙈 Κρυμμένες: {reqs.filter(r=>r.hidden).length}</span>}</h1>
 <div style={{background:"white",borderRadius:10,overflow:"hidden"}}><div style={{overflowX:"auto"}}><table style={{width:"100%",borderCollapse:"collapse"}}><thead><tr style={{background:"#FAFAFA"}}>{["ID","Πελάτης","ΑΦΜ","Πρόγρ.","Status","Agent",""].map(h=><th key={h} style={{padding:"7px 10px",fontWeight:600,fontSize:"0.7rem",color:"#888",textAlign:"left"}}>{h}</th>)}</tr></thead><tbody>
 {reqs.map(r=><tr key={r.id} style={{borderBottom:"1px solid #F5F5F5",background:r.hidden?"#FFF8E1":"white",opacity:r.hidden?0.6:1}}>
 <td style={{padding:"7px 10px",fontWeight:700,color:pr.color,fontSize:"0.78rem"}}>{r.id}</td>
@@ -2694,7 +2695,7 @@ if(sec==="rq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.prog}</td>
 <td style={{padding:"7px 10px"}}><select value={r.status} onChange={async e=>{const ns=e.target.value;const updates={status:ns};if(ns==="active"&&!r.startDate){const td=new Date().toISOString().slice(0,10);const dur=parseInt(r.duration)||24;const ed=new Date(td);ed.setMonth(ed.getMonth()+dur);updates.startDate=td;updates.endDate=ed.toISOString().slice(0,10);}if(ns==="credited"&&!r.creditDate){updates.creditDate=new Date().toISOString().slice(0,10);}setReqs(p=>p.map(x=>x.id===r.id?{...x,...updates}:x));if(USE_SUPA){try{const dbUp={status:ns};if(updates.startDate){dbUp.start_date=updates.startDate;dbUp.end_date=updates.endDate;}if(updates.creditDate){dbUp.credit_date=updates.creditDate;}await supa.from("requests").update(dbUp).eq("id",r.id);}catch(e2){console.error("❌",e2);}}}} style={{...iS,width:155,padding:"3px 6px",fontSize:"0.72rem",background:ST[r.status]?.bg||"#F5F5F5",color:ST[r.status]?.c||"#333",fontWeight:700}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
 <td style={{padding:"7px 10px",fontSize:"0.76rem"}}>{r.agentName}</td>
-<td style={{padding:"7px 10px"}}><button onClick={()=>{if(confirm("Απόκρυψη "+r.id+"?")){setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:true}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:true},match:`id=eq.${r.id}`}).catch(e=>console.error(e));}}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🗑</button></td></tr>)}</tbody></table></div></div></div>);
+<td style={{padding:"7px 10px"}}><div style={{display:"flex",gap:3}}>{!r.hidden?<button onClick={()=>{if(confirm("Απόκρυψη "+r.id+"?")){setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:true}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:true},match:`id=eq.${r.id}`}).catch(e=>console.error(e));}}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#FFE6E6",color:"#E60000",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>🙈</button>:<button onClick={()=>{setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:false}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:false},match:`id=eq.${r.id}`}).catch(e=>console.error(e));}} style={{padding:"2px 8px",borderRadius:4,border:"none",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.7rem",fontWeight:600}}>👁</button>}</div></td></tr>)}</tbody></table></div></div></div>);
 
 // ─── ENERGY REQUESTS ───
 if(sec==="erq")return(<div><AdmBk onClick={()=>setSec("ov")}/>
@@ -2717,7 +2718,7 @@ return(<>
 <td style={{padding:"7px 8px"}}><select value={r.status} onChange={e=>setReqs(p=>p.map(x=>x.id===r.id?{...x,status:e.target.value}:x))} style={{padding:"2px 4px",borderRadius:4,fontSize:"0.7rem",fontWeight:600,background:st.bg,color:st.c,border:"1px solid "+st.c}}>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></td>
 <td style={{padding:"7px 8px"}}>{r.agentName}</td>
 <td style={{padding:"7px 8px"}}>{fmtDate(r.created)}</td>
-<td style={{padding:"7px 8px"}}><button onClick={()=>{if(confirm("Απόκρυψη "+r.id+"?")){setReqs(p=>p.map(x=>x.id===r.id?{...x,hidden:true}:x));if(USE_SUPA)apiCall("db",{method:"update",table:"requests",data:{hidden:true},match:`id=eq.${r.id}`}).catch(e=>console.error(e));}}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"2px 6px",cursor:"pointer",fontSize:"0.68rem"}}>🗑</button></td>
+<td style={{padding:"7px 8px"}}><button onClick={()=>{if(confirm("Διαγραφή "+r.id+"?"))setReqs(p=>p.filter(x=>x.id!==r.id));}} style={{background:"#FFEBEE",color:"#C62828",border:"none",borderRadius:4,padding:"2px 6px",cursor:"pointer",fontSize:"0.68rem"}}>🗑</button></td>
 </tr>);})}</tbody></table></div>
 </>);})()}
 </div>);
