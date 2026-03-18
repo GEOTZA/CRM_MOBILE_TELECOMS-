@@ -164,7 +164,7 @@ const PERMS = {
   director:{create:0,edit:1,del:1,viewAll:1,users:1,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,reports:1,needsCode:1},
   supervisor:{create:0,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,ownTeam:1},
   backoffice:{create:0,edit:1,del:0,viewAll:1,users:0,delUsers:0,pause:0,fields:0,exp:1,tickets:1,status:1,comment:1,reports:1},
-  partner:{create:1,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownAgents:1},
+  partner:{create:0,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownAgents:1},
   agent:{create:1,edit:1,del:0,viewAll:0,users:0,delUsers:0,pause:0,fields:0,exp:0,tickets:1,status:0,comment:1,ownOnly:1},
 };
 
@@ -807,7 +807,7 @@ const AdmBk=({onClick})=><button onClick={onClick} style={{padding:"8px 16px",bo
 const AdmCd=({ic,ti,ds,ct,cl,onClick})=><div onClick={onClick} style={{background:"white",borderRadius:12,padding:16,cursor:"pointer",boxShadow:"0 2px 8px rgba(0,0,0,0.06)",borderLeft:"4px solid "+cl,transition:"all .15s"}} onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";}} onMouseLeave={e=>{e.currentTarget.style.transform="none";}}><div style={{fontSize:"1.5rem",marginBottom:4}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1rem"}}>{ti}</div><p style={{fontSize:"0.76rem",color:"#888",marginTop:2}}>{ds}</p>{ct!==undefined&&<div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.4rem",color:cl,marginTop:4}}>{ct}</div>}</div>;
 
 function ReqForm({pr,prov,onSave,onCancel,ed,db,P,cu}){
-const emptyLine=(provKey,lineType)=>{const defType=lineType||(provKey&&PROVIDERS[provKey]?.programs?.mobile?.length===0?"landline":"mobile");return{id:Date.now()+Math.random(),type:defType,prog:"",progCustom:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",landNum:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:"",eProv:"dei",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:""};};
+const emptyLine=(provKey,lineType)=>{const defType=lineType||(provKey&&PROVIDERS[provKey]?.programs?.mobile?.length===0?"landline":"mobile");return{id:Date.now()+Math.random(),type:defType,prog:"",progCustom:"",price:"",mode:"simo",subsidy:"",nlp:"new",fromProv:"",mobNum:"",simCard:"",landNum:"",instAddr:"",instCity:"",instTk:"",instLat:"",instLng:"",eProv:"dei",eType:"Οικιακό Γ1",eInvoiceColor:"🔵 Μπλε (Σταθερό)",eBilling:"Κανονικό",ePayment:"Πάγια Εντολή",eAction:"Νέα Σύνδεση",eConnStatus:"Ενεργό",eParochi:"",eHkasp:""};};
 const[form,setForm]=useState(()=>{
   const today=new Date().toISOString().slice(0,10);
   const initEnd=(()=>{const d=new Date();d.setMonth(d.getMonth()+24);return d.toISOString().slice(0,10);})();
@@ -948,6 +948,7 @@ return(
 {isPort&&<FL l="Από Πάροχο"><select value={ln.fromProv} onChange={e=>updLine(i,"fromProv",e.target.value)} style={iS}><option value="">—</option>{provOpts.map(x=><option key={x}>{x}</option>)}</select></FL>}
 
 {isMob&&<FL l="Αριθμός Κινητού"><input type="tel" maxLength={10} value={ln.mobNum} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,10);updLine(i,"mobNum",v)}} placeholder="69xxxxxxxx" style={iS}/></FL>}
+{isMob&&<FL l="Κάρτα SIM"><input type="text" maxLength={30} value={ln.simCard||""} onChange={e=>{const v=e.target.value.replace(/\D/g,"").slice(0,30);updLine(i,"simCard",v)}} placeholder="Αριθμός SIM (έως 30 ψηφία)" style={iS}/></FL>}
 
 {isLand&&<FL l="Αριθμός Σταθερού"><input type="tel" maxLength={10} value={ln.landNum} onChange={e=>{const v=e.target.value.replace(/[^\d]/g,"").slice(0,10);updLine(i,"landNum",v)}} placeholder="21xxxxxxxx" style={iS}/></FL>}
 </>}
@@ -1131,7 +1132,7 @@ return(
 {ln.type!=="energy"&&<DF l="Τρόπος" v={ln.mode==="simo"?"SIM Only":"Επιδότηση"+(ln.subsidy?" €"+ln.subsidy:"")}/>}
 {ln.type!=="energy"&&<DF l="Τύπος" v={ln.nlp==="port"?"Φορητότητα"+(ln.fromProv?" από "+ln.fromProv:""):"Νέα Γραμμή"}/>}
 {ln.type==="energy"&&<><DF l="Τιμολόγιο" v={ln.eInvoiceColor}/><DF l="Τύπος Ρεύματος" v={ln.eType}/><DF l="Τιμολόγηση" v={ln.eBilling}/><DF l="Πληρωμή" v={ln.ePayment}/><DF l="Ενέργεια" v={ln.eAction}/>{ln.eConnStatus&&<DF l="Κατάσταση" v={ln.eConnStatus}/>}{ln.eParochi&&<DF l="Αρ. Παροχής" v={ln.eParochi}/>}{ln.eHkasp&&<DF l="ΗΚΑΣΠ" v={ln.eHkasp}/>}{ln.fromProv&&<DF l="Από Πάροχο" v={ln.fromProv}/>}</>}
-{ln.mobNum&&<DF l="Κινητό" v={ln.mobNum}/>}{ln.landNum&&<DF l="Σταθερό" v={ln.landNum}/>}
+{ln.mobNum&&<DF l="Κινητό" v={ln.mobNum}/>}{ln.simCard&&<DF l="Κάρτα SIM" v={ln.simCard}/>}{ln.landNum&&<DF l="Σταθερό" v={ln.landNum}/>}
 {ln.instAddr&&<DF l="📍 Εγκατάσταση" v={`${ln.instAddr}, ${ln.instCity||""} ${ln.instTk||""}`}/>}
 {(ln.instLat&&ln.instLng)&&<DF l="📌 Συντεταγμένες" v={<a href={`https://www.google.com/maps?q=${ln.instLat},${ln.instLng}`} target="_blank" rel="noreferrer" style={{color:"#1565C0",textDecoration:"underline"}}>{ln.instLat}, {ln.instLng} 🗺️</a>}/>}
 </div></div>))
@@ -1398,7 +1399,7 @@ const blob=new Blob([tree],{type:"text/plain;charset=utf-8"});const url=URL.crea
 {(nu.role!=="agent"&&nu.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner (προαιρ.)</label><select value={nu.partner} onChange={e=>setNU(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Πρόσβαση</label><select value={nu.accessGroup||"all"} onChange={e=>setNU(p=>({...p,accessGroup:e.target.value}))} style={iS}><option value="all">📊 Όλα</option><option value="telecom">📡 Telecom</option><option value="energy">⚡ Ρεύμα</option></select></div>
 </div>
-<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){const name=`${nu.fname} ${nu.lname}`;const hashed=await hashPW(nu.pw);const newUser={un:nu.un,pw:hashed,name,email:nu.email,mobile:nu.mobile||"",userCode:nu.userCode||"",role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",accessGroup:nu.accessGroup||"all",active:1,paused:0,tixOff:0,cc:1,id:`U${String(users.length+10).padStart(3,"0")}`,mustChangePW:1};setUsers(p=>[...p,newUser]);if(USE_SUPA){try{await apiCall("db",{method:"insert",table:"users",data:{id:newUser.id,username:nu.un,password:hashed,name,email:nu.email,role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",mobile:nu.mobile||"",user_code:nu.userCode||"",can_create:true,access_group:nu.accessGroup||"all",active:true,must_change_pw:true}});}catch(e){console.error("User create error:",e);}}setNU({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:"",accessGroup:"all"});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
+<button onClick={async()=>{if(nu.un&&nu.pw&&nu.fname&&nu.lname){if(nu.role==="agent"&&nu.partner){const existing=users.find(u=>u.un===nu.un||u.name===`${nu.fname} ${nu.lname}`);if(existing&&existing.partner&&existing.partner!==nu.partner){alert(`⚠️ Ο agent "${nu.fname} ${nu.lname}" ανήκει ήδη στον partner "${existing.partner}"`);return;}}const name=`${nu.fname} ${nu.lname}`;const hashed=await hashPW(nu.pw);const newUser={un:nu.un,pw:hashed,name,email:nu.email,mobile:nu.mobile||"",userCode:nu.userCode||"",role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",accessGroup:nu.accessGroup||"all",active:1,paused:0,tixOff:0,cc:1,id:`U${String(users.length+10).padStart(3,"0")}`,mustChangePW:1};setUsers(p=>[...p,newUser]);if(USE_SUPA){try{await apiCall("db",{method:"insert",table:"users",data:{id:newUser.id,username:nu.un,password:hashed,name,email:nu.email,role:nu.role,partner:nu.partner||"",supervisor:nu.supervisor||"",mobile:nu.mobile||"",user_code:nu.userCode||"",can_create:true,access_group:nu.accessGroup||"all",active:true,must_change_pw:true}});}catch(e){console.error("User create error:",e);}}setNU({un:"",pw:"",fname:"",lname:"",email:"",mobile:"",userCode:"",role:"agent",partner:"",supervisor:"",accessGroup:"all"});setShow(false);}else alert("Συμπληρώστε Username, Password, Όνομα, Επώνυμο");}} style={B("#4CAF50","white",{padding:"8px 24px"})}>✅ Δημιουργία</button>
 </div>}
 
 {/* Delete modal for Director */}
@@ -1454,7 +1455,7 @@ const blob=new Blob([tree],{type:"text/plain;charset=utf-8"});const url=URL.crea
 <input value={editUser.userCode||""} onChange={e=>setEditUser(p=>({...p,userCode:e.target.value}))} style={{...iS,borderColor:"#FFE0B2"}}/></div>}
 <div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ρόλος</label><select value={editUser.role} onChange={e=>setEditUser(p=>({...p,role:e.target.value}))} style={iS} disabled={cu.role==="director"&&editUser.role==="admin"}>{Object.entries(ROLES).filter(([k])=>cu.role==="admin"||k!=="admin").map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
 {editUser.role==="partner"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Supervisor</label><select value={editUser.supervisor||""} onChange={e=>setEditUser(p=>({...p,supervisor:e.target.value}))} style={iS}><option value="">—</option>{users.filter(u=>u.role==="supervisor").map(u=><option key={u.id} value={u.id}>{u.name}</option>)}</select></div>}
-{editUser.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner</label><select value={editUser.partner||""} onChange={e=>setEditUser(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
+{editUser.role==="agent"&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Ανήκει σε Partner</label><select value={editUser.partner||""} onChange={e=>{const np=e.target.value;const ex=users.find(u=>u.id===editUser.id);if(ex&&ex.partner&&np&&ex.partner!==np){if(!confirm(`⚠️ Ο agent "${editUser.fname} ${editUser.lname}" ανήκει στον "${ex.partner}". Αλλαγή σε "${np}";`))return;}setEditUser(p=>({...p,partner:np}));}} style={iS}><option value="">—</option>{users.filter(u=>u.role==="partner").map(u=><option key={u.id} value={u.name}>{u.name}</option>)}</select></div>}
 {(editUser.role!=="agent"&&editUser.role!=="partner")&&<div><label style={{fontSize:"0.74rem",fontWeight:600}}>Partner</label><select value={editUser.partner||""} onChange={e=>setEditUser(p=>({...p,partner:e.target.value}))} style={iS}><option value="">—</option>{PARTNERS_LIST.map(p=><option key={p}>{p}</option>)}</select></div>}
 {(cu.role==="admin"||cu.role==="director")&&<div style={{background:"#FFEBEE",borderRadius:8,padding:10,border:"1px solid #FFCDD2"}}>
 <label style={{fontSize:"0.74rem",fontWeight:600,color:"#C62828"}}>🔑 Νέος Κωδικός Πρόσβασης (αφήστε κενό αν δεν αλλάζει)</label>
@@ -1804,7 +1805,7 @@ return(<div style={{maxWidth:900,margin:"0 auto"}}>
 {eTab==="dash"&&eVM==="list"&&<>
 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900}}>⚡ Αιτήσεις Ρεύματος</h1>
-<button onClick={()=>setEVM("form")} style={{padding:"8px 18px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#FF6F00,#F4511E)",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.82rem"}}>➕ Νέα Αίτηση</button></div>
+<div style={{display:"flex",gap:6}}><button onClick={()=>expXLSX(eFR,"Energy_"+new Date().toISOString().slice(0,10)+".xlsx","Ρεύμα")} style={{padding:"8px 16px",borderRadius:8,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:700,fontSize:"0.82rem"}}>📊 Excel</button>{(cu.role==="admin"||cu.cc&&P.create)?<button onClick={()=>setEVM("form")} style={{padding:"8px 18px",borderRadius:8,border:"none",background:"linear-gradient(135deg,#FF6F00,#F4511E)",color:"white",cursor:"pointer",fontWeight:700,fontSize:"0.82rem"}}>➕ Νέα Αίτηση</button>:null}</div></div>
 
 {/* Stats */}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:14}}>
@@ -1881,12 +1882,18 @@ return(<div style={{maxWidth:900,margin:"0 auto"}}>
 // === ENERGY OFFERS TAB ===
 function EnergyOffersTab({cu}){
 const [eOffers,setEOffers]=useState({});
+const [miscFiles,setMiscFiles]=useState([]);
 const canUp=["admin","director","backoffice"].includes(cu.role);
 useEffect(()=>{
-  if(USE_SUPA){apiCall("db",{method:"select",table:"offers",match:"provider=like.energy_*&select=*"}).then(r=>{
-    const m={};(r.data||[]).forEach(o=>{m[o.provider]=o;});setEOffers(m);
-  }).catch(e=>console.warn("Energy offers load:",e));}
+  if(USE_SUPA){
+    apiCall("db",{method:"select",table:"offers",match:"provider=like.energy_*&select=*"}).then(r=>{
+      const m={};const misc=[];(r.data||[]).forEach(o=>{if(o.provider==="energy_misc")misc.push(o);else m[o.provider]=o;});setEOffers(m);setMiscFiles(misc);
+    }).catch(e=>console.warn("Energy offers load:",e));
+  }
 },[]);
+const delOffer=async(provKey)=>{const o=eOffers[provKey];if(!o||!o.file_path)return;if(!confirm("Διαγραφή αρχείου "+o.description+"?"))return;try{await apiCall("db",{method:"update",table:"offers",data:{file_path:"",description:""},match:`provider=eq.${provKey}&slot=eq.0`});setEOffers(p=>{const n={...p};delete n[provKey];return n;});alert("✅ Διαγράφηκε");}catch(e){alert("Σφάλμα: "+e.message);}};
+const uploadMisc=async(f,slot)=>{if(!f)return;try{const path=`energy_offers/misc/${Date.now()}_${f.name}`;await storageUpload(path,f);await apiCall("db",{method:"upsert",table:"offers",data:{provider:"energy_misc",slot,description:f.name,file_path:path,updated_at:new Date().toISOString()}});setMiscFiles(p=>{const n=[...p.filter(x=>x.slot!==slot),{provider:"energy_misc",slot,description:f.name,file_path:path,updated_at:new Date().toISOString()}];return n;});alert("✅ Ανέβηκε: "+f.name);}catch(e){alert("Σφάλμα: "+e.message);}};
+const delMisc=async(slot)=>{const m=miscFiles.find(x=>x.slot===slot);if(!m)return;if(!confirm("Διαγραφή "+m.description+"?"))return;try{await apiCall("db",{method:"update",table:"offers",data:{file_path:"",description:""},match:`provider=eq.energy_misc&slot=eq.${slot}`});setMiscFiles(p=>p.filter(x=>x.slot!==slot));alert("✅ Διαγράφηκε");}catch(e){alert("Σφάλμα: "+e.message);}};
 return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🏷️ Προσφορές Ρεύματος</h1>
 {Object.entries(ENERGY_PROVIDERS).slice(0,10).map(([k,ep])=>{
@@ -1900,6 +1907,7 @@ return(
 {offerData&&offerData.file_path&&<div style={{marginTop:6,display:"flex",gap:6,alignItems:"center"}}>
 <button onClick={()=>downloadDoc(offerData.file_path,offerData.description||"offer.pdf")} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📥 {offerData.description||"Λήψη"}</button>
 <span style={{fontSize:"0.65rem",color:"#999"}}>{offerData.updated_at?new Date(offerData.updated_at).toLocaleDateString("el"):""}</span>
+{canUp&&<button onClick={()=>delOffer("energy_"+k)} style={{padding:"3px 8px",borderRadius:4,border:"none",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑️</button>}
 </div>}
 </div>
 {canUp&&<div style={{display:"flex",gap:4}}>
@@ -1907,6 +1915,21 @@ return(
 <button onClick={()=>document.getElementById(`eoff_${k}`).click()} style={{padding:"4px 10px",borderRadius:6,border:"1px solid "+ep.color,background:"white",color:ep.color,cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>📤 Upload</button>
 </div>}
 </div></div>);})}
+
+{/* ΛΟΙΠΑ ΑΡΧΕΙΑ */}
+<div style={{background:"white",borderRadius:12,padding:18,marginTop:16,border:"1px solid #E0E0E0",borderLeft:"4px solid #9C27B0"}}>
+<h2 style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"1rem",marginBottom:12,color:"#9C27B0"}}>📁 Λοιπά Αρχεία</h2>
+{[0,1,2].map(slot=>{const mf=miscFiles.find(x=>x.slot===slot);return(
+<div key={slot} style={{display:"flex",alignItems:"center",gap:8,padding:8,background:slot%2?"#FAFAFA":"white",borderRadius:6,marginBottom:4}}>
+<span style={{fontWeight:700,fontSize:"0.78rem",color:"#666",minWidth:20}}>#{slot+1}</span>
+{mf&&mf.file_path?<div style={{display:"flex",gap:6,alignItems:"center",flex:1}}>
+<button onClick={()=>downloadDoc(mf.file_path,mf.description)} style={{padding:"4px 12px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontSize:"0.74rem",fontWeight:600}}>📥 {mf.description}</button>
+<span style={{fontSize:"0.65rem",color:"#999"}}>{mf.updated_at?new Date(mf.updated_at).toLocaleDateString("el"):""}</span>
+{canUp&&<button onClick={()=>delMisc(slot)} style={{padding:"3px 8px",borderRadius:4,border:"none",background:"#FFEBEE",color:"#C62828",cursor:"pointer",fontSize:"0.68rem",fontWeight:600}}>🗑️</button>}
+</div>:<div style={{flex:1,fontSize:"0.76rem",color:"#CCC"}}>-- κενό --</div>}
+{canUp&&<><input type="file" accept=".pdf,image/*" id={`emisc_${slot}`} style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)uploadMisc(f,slot);}}/><button onClick={()=>document.getElementById(`emisc_${slot}`).click()} style={{padding:"4px 10px",borderRadius:6,border:"1px solid #9C27B0",background:"white",color:"#9C27B0",cursor:"pointer",fontSize:"0.72rem",fontWeight:600}}>📤</button></>}
+</div>);})}
+</div>
 </div>);
 }
 
