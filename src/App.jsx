@@ -588,7 +588,7 @@ return(<>
 {hasEnergy&&<>{sHead("ΡΕΥΜΑ")}
 {sItem("e_dash","⚡","Αιτήσεις")}
 {sItem("e_search","🔍","Αναζήτηση")}
-{sItem("e_reports","📈","Reports")}
+{P.reports&&sItem("e_reports","📈","Reports")}
 {sItem("e_offers","🏷️","Προσφορές")}
 </>}
 {sHead("ΚΟΙΝΑ")}
@@ -614,7 +614,7 @@ return(<>
 
 {/* Stats */}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:8,marginBottom:16}}>
-{[["📊",stats.total,"Σύνολο",pr.color,"all"],["✅",stats.active,"Ενεργές","#00A651","active"],["⏳",stats.pending,"Εκκρεμείς","#FF9800","pending"],["❌",stats.cancelled,"Ακυρωμένες","#E60000","cancelled"],["🔄",stats.winback,"Win Back","#9C27B0","winback"],["💬",stats.counteroffer,"Αντιπρόταση","#2196F3","counteroffer"],["🔍",stats.credit_check,"Πιστ.Έλεγχος","#FF5722","credit_check"],["💳",stats.credited,"Πιστωθείσες","#009688","credited"]].map(([ic,val,lab,col,key])=>
+{[["📊",stats.total,"Σύνολο",pr.color,"all"],["💾",stats.draft,"Αποθηκευμένες","#78909C","draft"],["📤",stats.sent,"Απεστάλη","#1565C0","sent"],["✅",stats.active,"Ενεργές","#00A651","active"],["⏳",stats.pending,"Εκκρεμείς","#FF9800","pending"],["❌",stats.cancelled,"Ακυρωμένες","#E60000","cancelled"],["🔄",stats.winback,"Win Back","#9C27B0","winback"],["💬",stats.counteroffer,"Αντιπρόταση","#2196F3","counteroffer"],["🔍",stats.credit_check,"Πιστ.Έλεγχος","#FF5722","credit_check"],["💳",stats.credited,"Πιστωθείσες","#009688","credited"]].map(([ic,val,lab,col,key])=>
 <div key={key} onClick={()=>setSF(key)} style={{background:sf===key?"#FAFAFA":"white",borderRadius:10,padding:12,boxShadow:"0 1px 3px rgba(0,0,0,0.06)",borderLeft:`4px solid ${col}`,cursor:"pointer",border:sf===key?`2px solid ${col}`:"2px solid transparent"}}>
 <div style={{fontSize:"1.1rem"}}>{ic}</div><div style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:800,color:col}}>{val||0}</div><div style={{fontSize:"0.68rem",color:"#888"}}>{lab}</div></div>)}
 </div>
@@ -1500,31 +1500,68 @@ setEditUser(null);}} style={B("#4CAF50","white",{padding:"8px 20px"})}>💾 Απ
 </div>);}
 
 // ═══ ENERGY SEARCH ═══
-function EnergySearch({energyReqs,iS}){
-const[sq,setSQ]=useState("");
-const res=sq.trim()?energyReqs.filter(r=>[r.id,r.ln,r.fn,r.afm,r.mob,r.agentName].some(v=>(v||"").toLowerCase().includes(sq.toLowerCase()))):[];
+function EnergySearch({energyReqs,iS,onSelect}){
+const[srch,setSrch]=useState({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
+const ss=v=>e=>setSrch(p=>({...p,[v]:e.target.value}));
+const clear=()=>setSrch({afm:"",adt:"",reqId:"",phone:"",dateFrom:"",dateTo:"",partner:"",agent:"",status:"",prog:""});
+const uniqAgents=[...new Set(energyReqs.map(r=>r.agentName).filter(Boolean))];
+const uniqPartners=[...new Set(energyReqs.map(r=>r.partner).filter(Boolean))];
+const fL={fontSize:"0.7rem",color:"#888",fontWeight:600,marginBottom:2};
+let res=[...energyReqs];
+if(srch.afm)res=res.filter(r=>(r.afm||"").includes(srch.afm));
+if(srch.adt)res=res.filter(r=>(r.adt||"").toLowerCase().includes(srch.adt.toLowerCase()));
+if(srch.reqId)res=res.filter(r=>(r.id||"").toLowerCase().includes(srch.reqId.toLowerCase()));
+if(srch.phone)res=res.filter(r=>(r.mob||"").includes(srch.phone)||(r.ph||"").includes(srch.phone));
+if(srch.partner)res=res.filter(r=>r.partner===srch.partner);
+if(srch.agent)res=res.filter(r=>r.agentName===srch.agent);
+if(srch.status)res=res.filter(r=>r.status===srch.status);
+if(srch.prog)res=res.filter(r=>{const lns=r.lines||[];return lns.some(l=>(l.prog||"").includes(srch.prog)||(l.progCustom||"").includes(srch.prog));});
+if(srch.dateFrom)res=res.filter(r=>r.created>=srch.dateFrom);
+if(srch.dateTo)res=res.filter(r=>r.created<=srch.dateTo+"T23:59");
+const hasAny=Object.values(srch).some(v=>v);
 return(<div>
 <h1 style={{fontFamily:"'Outfit'",fontSize:"1.4rem",fontWeight:900,marginBottom:14}}>🔍 Αναζήτηση Ρεύματος</h1>
-<div style={{display:"flex",gap:6,marginBottom:14}}><input value={sq} onChange={e=>setSQ(e.target.value)} placeholder="ID, Επώνυμο, ΑΦΜ, Κινητό, Agent..." style={{...iS,flex:1}}/></div>
-{sq.trim()&&<div style={{fontSize:"0.78rem",marginBottom:8,color:"#666"}}>Βρέθηκαν {res.length} αποτελέσματα</div>}
-{res.length>0&&<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.76rem",background:"white",borderRadius:8,overflow:"hidden"}}>
-<thead><tr style={{background:"#FF6F00",color:"white"}}>{["ID","Πελάτης","ΑΦΜ","Πάροχος","Κατάσταση","Agent","Ημ/νία"].map(h=><th key={h} style={{padding:"6px 8px",textAlign:"left"}}>{h}</th>)}</tr></thead>
+<div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+<div style={{width:260,background:"white",borderRadius:12,padding:16,boxShadow:"0 1px 4px rgba(0,0,0,0.06)",flexShrink:0}}>
+<div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.9rem",marginBottom:12}}>Φίλτρα</div>
+<div style={{display:"flex",flexDirection:"column",gap:10}}>
+<div><div style={fL}>ΑΦΜ</div><input value={srch.afm} onChange={ss("afm")} placeholder="ΑΦΜ..." style={iS}/></div>
+<div><div style={fL}>Κωδικός Αίτησης</div><input value={srch.reqId} onChange={ss("reqId")} placeholder="REQ-..." style={iS}/></div>
+<div><div style={fL}>Τηλέφωνο</div><input value={srch.phone} onChange={ss("phone")} placeholder="69..." style={iS}/></div>
+<div><div style={fL}>Πρόγραμμα</div><input value={srch.prog} onChange={ss("prog")} placeholder="Πρόγραμμα..." style={iS}/></div>
+<div><div style={fL}>Ημ/νία Από</div><input type="date" value={srch.dateFrom} onChange={ss("dateFrom")} style={iS}/></div>
+<div><div style={fL}>Ημ/νία Έως</div><input type="date" value={srch.dateTo} onChange={ss("dateTo")} style={iS}/></div>
+<div><div style={fL}>Partner</div><select value={srch.partner} onChange={ss("partner")} style={iS}><option value="">Όλοι</option>{uniqPartners.map(p=><option key={p}>{p}</option>)}</select></div>
+<div><div style={fL}>Agent</div><select value={srch.agent} onChange={ss("agent")} style={iS}><option value="">Όλοι</option>{uniqAgents.map(a=><option key={a}>{a}</option>)}</select></div>
+<div><div style={fL}>Κατάσταση</div><select value={srch.status} onChange={ss("status")} style={iS}><option value="">Όλες</option>{Object.entries(ST).map(([k,v])=><option key={k} value={k}>{v.i} {v.l}</option>)}</select></div>
+<button onClick={clear} style={{padding:"8px",borderRadius:6,border:"1px solid #DDD",background:"white",cursor:"pointer",fontSize:"0.78rem",fontWeight:600}}>✖ Καθαρισμός</button>
+</div></div>
+<div style={{flex:1,minWidth:0}}>
+<div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+<span style={{fontSize:"0.82rem",color:"#666",fontWeight:600}}>Εγγραφές: {hasAny?res.length:0}</span>
+<button onClick={()=>{const h=["ID","Επώνυμο","Όνομα","ΑΦΜ","Κινητό","Πάροχος","Πρόγραμμα","Κατάσταση","Agent","Ημ/νία"];const rows=res.map(r=>{const el=(r.lines||[])[0]||{};return[r.id,r.ln,r.fn,r.afm,r.mob,ENERGY_PROVIDERS[el.eProv]?.name||"",el.progCustom||el.prog||"",ST[r.status]?.l||"",r.agentName,fmtDate(r.created)];});expReport("Αναζήτηση Ρεύματος",h,rows,"Energy_Search.xlsx");}} style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4CAF50",background:"#E8F5E9",color:"#2E7D32",cursor:"pointer",fontWeight:600,fontSize:"0.78rem"}}>📥 Excel</button>
+</div>
+{hasAny&&res.length>0?<div style={{background:"white",borderRadius:10,overflow:"auto",boxShadow:"0 1px 4px rgba(0,0,0,0.06)"}}>
+<table style={{width:"100%",borderCollapse:"collapse",fontSize:"0.76rem"}}>
+<thead><tr style={{background:"#FF6F00",color:"white"}}>{["ID","Πελάτης","ΑΦΜ","Πάροχος","Κατάσταση","Agent","Ημ/νία"].map(h=><th key={h} style={{padding:"7px 8px",textAlign:"left"}}>{h}</th>)}</tr></thead>
 <tbody>{res.map(r=>{const st=ST[r.status]||{};const el=(r.lines||[])[0]||{};return(
-<tr key={r.id} style={{borderBottom:"1px solid #F0F0F0"}}>
-<td style={{padding:"6px 8px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
-<td style={{padding:"6px 8px"}}>{r.ln} {r.fn}</td>
-<td style={{padding:"6px 8px"}}>{r.afm}</td>
-<td style={{padding:"6px 8px"}}>{ENERGY_PROVIDERS[el.eProv]?.name||"—"}</td>
-<td style={{padding:"6px 8px"}}><span style={{padding:"2px 6px",borderRadius:4,fontSize:"0.66rem",fontWeight:700,background:st.bg,color:st.c}}>{st.i} {st.l}</span></td>
-<td style={{padding:"6px 8px"}}>{r.agentName}</td>
-<td style={{padding:"6px 8px"}}>{fmtDate(r.created)}</td></tr>);})}</tbody></table>}
+<tr key={r.id} onClick={()=>onSelect&&onSelect(r)} style={{borderBottom:"1px solid #F0F0F0",cursor:"pointer"}} onMouseOver={e=>e.currentTarget.style.background="#FFF8E1"} onMouseOut={e=>e.currentTarget.style.background=""}>
+<td style={{padding:"7px 8px",fontWeight:700,color:"#FF6F00"}}>{r.id}</td>
+<td style={{padding:"7px 8px"}}>{r.ln} {r.fn}</td>
+<td style={{padding:"7px 8px"}}>{r.afm}</td>
+<td style={{padding:"7px 8px"}}>{ENERGY_PROVIDERS[el.eProv]?.name||"--"}</td>
+<td style={{padding:"7px 8px"}}><span style={{padding:"2px 6px",borderRadius:4,fontSize:"0.66rem",fontWeight:700,background:st.bg,color:st.c}}>{st.i} {st.l}</span></td>
+<td style={{padding:"7px 8px"}}>{r.agentName}</td>
+<td style={{padding:"7px 8px"}}>{fmtDate(r.created)}</td></tr>);})}</tbody></table>
+</div>:hasAny?<div style={{textAlign:"center",padding:30,color:"#999"}}>Δεν βρέθηκαν αποτελέσματα</div>:<div style={{textAlign:"center",padding:30,color:"#999"}}>Συμπληρώστε φίλτρα για αναζήτηση</div>}
+</div></div>
 </div>);
 }
 
 // ═══ ENERGY PANEL (Full CRM) ═══
 function EnergyPanel({cu,reqs,setReqs,users,afmDb,P,initTab}){
 const[eTab,setETab]=useState(initTab||"dash");
-useEffect(()=>{if(initTab)setETab(initTab);},[initTab]); // dash, form, detail, search, reports
+useEffect(()=>{if(initTab){setETab(initTab);setEVM("list");setESel(null);}},[initTab]); // dash, form, detail, search, reports
 const[eVM,setEVM]=useState("list");
 const[eSel,setESel]=useState(null);
 const[eSF,setESF]=useState("all");
@@ -1771,7 +1808,7 @@ return(<div style={{maxWidth:900,margin:"0 auto"}}>
 
 {/* Stats */}
 <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(100px,1fr))",gap:8,marginBottom:14}}>
-{[["all","📊",eStats.total,"Σύνολο","#FF6F00"],["sent","📤",eStats.sent||0,"Απεστάλη","#1565C0"],["active","✅",eStats.active||0,"Ενεργές","#2E7D32"],["pending","⏳",eStats.pending||0,"Εκκρεμείς","#FF9800"],["cancelled","❌",eStats.cancelled||0,"Ακυρωμένες","#C62828"]].map(([k,ic,val,lab,col])=>
+{[["all","📊",eStats.total,"Σύνολο","#FF6F00"],["draft","💾",eStats.draft||0,"Αποθηκευμένες","#78909C"],["sent","📤",eStats.sent||0,"Απεστάλη","#1565C0"],["active","✅",eStats.active||0,"Ενεργές","#2E7D32"],["pending","⏳",eStats.pending||0,"Εκκρεμείς","#FF9800"],["cancelled","❌",eStats.cancelled||0,"Ακυρωμένες","#C62828"]].map(([k,ic,val,lab,col])=>
 <div key={k} onClick={()=>setESF(k)} style={{padding:8,borderRadius:8,background:"white",border:eSF===k?`2px solid ${col}`:"1px solid #E0E0E0",cursor:"pointer",textAlign:"center"}}>
 <div style={{fontSize:"0.68rem",color:col,fontWeight:600}}>{ic} {lab}</div>
 <div style={{fontFamily:"'Outfit'",fontWeight:800,fontSize:"1.1rem",color:col}}>{val}</div></div>)}
@@ -1796,7 +1833,7 @@ return(<div style={{maxWidth:900,margin:"0 auto"}}>
 </>}
 
 {/* SEARCH */}
-{eTab==="search"&&<EnergySearch energyReqs={energyReqs} iS={iS}/>}
+{eTab==="search"&&<EnergySearch energyReqs={energyReqs} iS={iS} onSelect={(r)=>{setESel(r);setEVM("detail");}}/>}
 
 {/* REPORTS */}
 {eTab==="reports"&&<div>
