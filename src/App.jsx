@@ -1706,11 +1706,6 @@ const EnergyForm=({ed,onCancel})=>{
   </div>))}
   </div>
 
-  {/* Signature */}
-  <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
-  <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>✍️ Υπογραφή</div>
-  <SigPad onSave={d=>s("sig",d)} ex={form.sig}/></div>
-
   {/* Contract Dates */}
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0",borderLeft:"4px solid #2E7D32"}}>
   <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>📅 Διάρκεια Συμβολαίου</div>
@@ -1737,6 +1732,11 @@ const EnergyForm=({ed,onCancel})=>{
   {/* Notes */}
   <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
   <FL l="Σημειώσεις"><textarea value={form.notes||""} onChange={e=>s("notes",e.target.value)} rows={2} style={{...iS,minHeight:50,resize:"vertical"}}/></FL></div>
+
+  {/* Signature */}
+  <div style={{background:"white",borderRadius:10,padding:14,marginBottom:10,border:"1px solid #E0E0E0"}}>
+  <div style={{fontFamily:"'Outfit'",fontWeight:700,fontSize:"0.88rem",marginBottom:8}}>✍️ Υπογραφή</div>
+  <SigPad onSave={d=>s("sig",d)} ex={form.sig}/></div>
 
   {/* Save */}
   <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap",padding:"10px 0"}}>
